@@ -1,0 +1,76 @@
+<!--Example html page that loads an es6 module-->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ES6 Module Loader</title>
+    <script type="module">
+
+        import { setup } from './modules/investment-overrides.js';
+        setup();
+
+        // const { XHREventDispatcher } = await import('./modules/xhr-intercept.js');
+    
+
+        // function testHttp(url) {
+        //     var xhr = new XMLHttpRequest();
+        //     xhr.open('GET', url);
+            
+        //     xhr.addEventListener('readystatechange', function() {
+        //         if (xhr.readyState === 4) {
+        //             console.log('readystatechange (addEventListener): ', (xhr.responseText + '').substring(0, 100) + '...');
+        //         }
+        //     });
+
+        //     xhr.onreadystatechange = function() {
+        //         if (xhr.readyState === 4) {
+        //             console.log('onreadystatechange: ', (xhr.responseText + '').substring(0, 100) + '...');
+        //         }
+        //     };
+
+        //     xhr.onload = function() {
+        //         if (xhr.status === 200) {
+        //             console.log('onload: ', (xhr.responseText + '').substring(0, 100) + '...');
+        //         } 
+        //         // else {
+        //         //     console.log('Request failed');
+        //         // }
+        //     };
+
+        //     xhr.onerror = function() {
+        //         console.log('Network error');
+        //     };
+
+        //     xhr.send();
+        // }
+
+        // // Subscribe to the custom log event
+        // XHREventDispatcher.addEventListener('xhrLogEvent', function(logDetail) {
+        //     console.log('Logged Request:', logDetail);
+        // });
+
+        // XMLHttpRequest.configureOverrides([
+        //     { mode:"replace", name:"call1", watcher:watchFn, url: 'https://30279bbbe4f345b3a36f33f4e29c0643.api.mockbin.io/', method: 'GET', replaceUrl: 'https://2ca72b131c5c445ea544d023c30d2942.api.mockbin.io/', replaceMethod: 'GET' },
+        //     { mode:"replace", name:"call2", watcher:watchFn2, url: 'https://2ca72b131c5c445ea544d023c30d2942.api.mockbin.io/', method: 'GET', replaceUrl: 'https://30279bbbe4f345b3a36f33f4e29c0643.api.mockbin.io/', replaceMethod: 'GET' }
+        // ]);
+
+        // testHttp('https://30279bbbe4f345b3a36f33f4e29c0643.api.mockbin.io/');
+        // testHttp('https://2ca72b131c5c445ea544d023c30d2942.api.mockbin.io/');
+        // testHttp('https://tvc4.investing.com/615bca0a5a51af775ac1b774a5323123/1635741342/1/1/8/history?symbol=31033&resolution=D&from=1672199100&to=1703303160')
+        // testHttp('https://tvc4.investing.com/615bca0a5a51af775ac1b774a5323123/1635741342/1/1/8/history?symbol=14216&resolution=D&from=1672193879&to=1703297939')
+
+
+        // function watchFn(config, response ) {
+        //     console.log('watchFn1');
+        //     debugger;
+        // }
+        // function watchFn2(config, response) {
+        //     return new Promise((resolve, reject) => {
+        //         console.log('watchFn1');
+        //         debugger;
+        //         // If everything went well, resolve the Promise
+        //         resolve('Promise resolved');
+        //         // If something went wrong, reject the Promise
+        //         // reject('Promise rejected');
+        //     });
+        // }
+    </script>

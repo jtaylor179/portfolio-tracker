@@ -1,0 +1,89 @@
+{
+    "positions": [
+        {
+            "symbol": "AAPL",
+            "companyName": "Apple Inc.",
+            "shares": 100,
+            "purchasePrice": 100,
+            "currentPrice": 105.5
+        },
+        {
+            "symbol": "SQ",
+            "companyName": "Square Inc.",
+            "shares": 50,
+            "purchasePrice": 200,
+            "currentPrice": 210.75
+        },
+        {
+            "symbol": "IBM",
+            "companyName": "International Business Machines Corporation",
+            "shares": 75,
+            "purchasePrice": 150,
+            "currentPrice": 155.25
+        },
+        {
+            "symbol": "SNOW",
+            "companyName": "Snowflake Inc.",
+            "shares": 30,
+            "purchasePrice": 300,
+            "currentPrice": 315.50
+        },
+        {
+            "symbol": "MSFT",
+            "companyName": "Microsoft Corporation",
+            "shares": 80,
+            "purchasePrice": 250,
+            "currentPrice": 265.75
+        },
+        {
+            "symbol": "F",
+            "companyName": "Ford Motor Company",
+            "shares": 200,
+            "purchasePrice": 12,
+            "currentPrice": 13.50
+        }
+    ][
+        {
+            "symbol": "AAPL",
+            "companyName": "Apple Inc.",
+            "shares": 100,
+            "purchasePrice": 100,
+            "currentPrice": 105.5
+        },
+        {
+            "symbol": "SQ",
+            "companyName": "Square Inc.",
+            "shares": 50,
+            "purchasePrice": 200,
+            "currentPrice": 210.75
+        },
+        {
+            "symbol": "IBM",
+            "companyName": "International Business Machines Corporation",
+            "shares": 75,
+            "purchasePrice": 150,
+            "currentPrice": 155.25
+        },
+        {
+            "symbol": "SNOW",
+            "companyName": "Snowflake Inc.",
+            "shares": 30,
+            "purchasePrice": 300,
+            "currentPrice": 315.50
+        },
+        {
+            "symbol": "MSFT",
+            "companyName": "Microsoft Corporation",
+            "shares": 80,
+            "purchasePrice": 250,
+            "currentPrice": 265.75
+        },
+        {
+            "symbol": "F",
+            "companyName": "Ford Motor Company",
+            "shares": 200,
+            "purchasePrice": 12,
+            "currentPrice": 13.50
+        }
+    ]
+}

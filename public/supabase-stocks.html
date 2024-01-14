@@ -1,0 +1,82 @@
+<html>
+<head><meta charset="utf-8">
+
+    <script type="module">
+        // import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+        // import {LitElement, html} from 'https://cdn.jsdelivr.net/gh/lit/dist@2/core/lit-core.min.js';
+        //const supabase = createClient('https://xyzcompany.supabase.co', 'public-anon-key')
+        // dynamically import shoelace components
+
+        // const script0 = document.createElement('script');
+        // script0.type = 'module';
+        // script0.src = 'https://cdn.jsdelivr.net/gh/lit/dist@2/core/lit-core.min.js';
+        // document.body.appendChild(script0);
+
+        const script = document.createElement('script');
+        script.type = 'module';
+        script.src = 'https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.12.0/cdn/shoelace.js';
+        document.body.appendChild(script);
+
+        const script1 = document.createElement('script');
+        script1.type = 'module';
+        script1.src = 'https://cdn.jsdelivr.net/npm/smart-webcomponents/source/modules/smart.grid.js';
+        document.body.appendChild(script1);
+        
+        // https://cdn.jsdelivr.net/npm/smart-webcomponents/source/modules/smart.grid.js"
+
+        // const script = document.createElement('script');
+        // script.type = 'module';
+        // script.src = 'https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.8.0/cdn/shoelace-autoloader.js';
+        // document.body.appendChild(script);
+
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.8.0/cdn/themes/light.css';
+        document.head.appendChild(link);
+
+        //
+        // const script3 = document.createElement('script');
+        // script.type = 'module';
+        // script.src = 'https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.8.0/cdn/shoelace-autoloader.js';
+        // document.body.appendChild(script);
+
+
+        // // Initialize client
+        // const supabase = createClient("https://xjvhgjupwroavlnkzkze.supabase.co", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhqdmhnanVwd3JvYXZsbmt6a3plIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTY3Mjg0MTMzMCwiZXhwIjoxOTg4NDE3MzMwfQ.JupOzJYALLMxcq-066pvRT7cQwo7RUgeOtUWG9ybbpc")
+        //
+        // console.log('Supabase Instance: ', supabase)
+        //
+        //
+        // // Get reference to stocks table
+        // const stockTable = supabase.from('stock')
+        //
+        // // Example query
+        // const { data: stocks, error } = await stockTable
+        //     .select()
+        //     .order('ticker')
+        //
+        // // Add MSFT Stock to table
+        // const { data, error2 } = await stockTable
+        //     .insert([
+        //         { ticker: 'MSFT', name: 'Microsoft' },
+        //     ])
+        // if (error2) console.log('Error: ', error2)
+        // else console.log('Data: ', data)
+        //
+        //
+        // // Log stocks
+        // console.log(stocks)
+    </script>
+
+    <script type="module" src="component-1.js"></script>
+</head>
+<body>
+
+<sl-button-group label="Alignment">
+    <sl-button size="large">Left</sl-button>65
+</sl-button-group>
+<br>
+<my-element></my-element>
+
+</body>
+</html>

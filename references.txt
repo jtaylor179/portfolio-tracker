@@ -1,0 +1,11 @@
+https://platform.openai.com/docs/assistants/overview
+https://platform.openai.com/docs/assistants/how-it-works
+https://platform.openai.com/docs/guides/text-generation
+https://platform.openai.com/docs/guides/text-generation/json-mode
+https://platform.openai.com/docs/guides/text-generation/reproducible-outputs
+https://platform.openai.com/docs/guides/function-calling
+https://platform.openai.com/docs/guides/embeddings/what-are-embeddings
+https://platform.openai.com/docs/guides/embeddings/use-cases
+https://platform.openai.com/docs/assistants/tools/code-interpreter
+https://platform.openai.com/docs/assistants/tools/knowledge-retrieval
+https://platform.openai.com/docs/assistants/tools/function-calling
