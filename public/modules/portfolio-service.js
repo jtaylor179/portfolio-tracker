@@ -1,7 +1,13 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
 export class PortfolioManagerService {
-    constructor(supabaseClient) {
+
+    constructor() {
+        const supabaseClient = createClient("https://xjvhgjupwroavlnkzkze.supabase.co", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhqdmhnanVwd3JvYXZsbmt6a3plIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTY3Mjg0MTMzMCwiZXhwIjoxOTg4NDE3MzMwfQ.JupOzJYALLMxcq-066pvRT7cQwo7RUgeOtUWG9ybbpc")
+
+        console.log('Supabase Instance: ', supabaseClient);
+        
+        
         this.supabase = supabaseClient;
     }
 

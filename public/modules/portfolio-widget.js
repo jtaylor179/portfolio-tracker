@@ -1,39 +1,46 @@
-import {LitElement, html} from 'https://cdn.jsdelivr.net/gh/lit/dist@2/core/lit-core.min.js';
+import { LitElement, html } from 'https://cdn.jsdelivr.net/gh/lit/dist@2/core/lit-core.min.js';
 import { XHREventDispatcher } from './xhr-intercept.js';
 import { PortfolioManagerService } from './portfolio-service.js';
 
-
-// Define custom element
 class PortfolioWidget extends LitElement {
-
-    // Define properties
     static get properties() {
         return {
-            name: { type: String }
+            selectedPortfolioId: { type: String }
         };
     }
 
-    // Initialize properties
     constructor() {
         super();
-        this.name = 'World';
+        this.selectedPortfolioId = '';
+        this.portfolios = [];
+        this.ownerId = '59b880ab-0f59-4d7d-a8f7-515c82f2d8f9';
     }
 
-    // Define a template
+    async connectedCallback() {
+        super.connectedCallback();
+        const portfolioManager = new PortfolioManagerService();
+        this.portfolios = await portfolioManager.getPortfoliosByOwner(this.ownerId);
+        if (this.portfolios.length > 0) {
+            this.selectedPortfolioId = this.portfolios[0].portfolio_id;
+        }
+    }
+
     render() {
-        return html`<p>Hello, ${this.name}!</p>`;
+        return html`
+            <label for="portfolio-select">Select Portfolio:</label>
+            <select id="portfolio-select" @change="${this._onPortfolioSelect}">
+                ${this.portfolios.map(portfolio => html`
+                    <option value="${portfolio.portfolio_id}" ?selected="${this.selectedPortfolioId === portfolio.portfolio_id}">
+                        ${portfolio.portfolio_name}
+                    </option>
+                `)}
+            </select>
+        `;
+    }
+
+    _onPortfolioSelect(event) {
+        this.selectedPortfolioId = event.target.value;
     }
 }
 
-// Register the element with the browser
 customElements.define('portfolio-widget', PortfolioWidget);
-
-
-
-// // Create an instance of the element
-// const myElement = new MyElement();
-// // set name property to 'Everyone'
-// myElement.name = 'Everyone';
-
-// // Add the element to the DOM
-// document.body.appendChild(myElement);
