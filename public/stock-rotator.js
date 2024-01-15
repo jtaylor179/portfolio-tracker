@@ -95,7 +95,7 @@ async function setNext() {
   var symbolRef = document.body
     .querySelectorAll("iframe")[0]
     .contentWindow.document.querySelector(".symbol-edit");
-  var containerRef = symbolRef.closest(".left");
+  // var containerRef = symbolRef.closest(".left");
 
   if (symbolRef) {
     debugger;

@@ -18,3 +18,5 @@ javascript:(function(){function callback(){console.log('bookmarklet');}var s=doc
 
 
 javascript:(function(){(async function load(){const module = await import("http://127.0.0.1:8080/investment-overrides.js");module.xhrInterceptor.setup();})()})()
+
+javascript:(function(){(async function load(){const module = await import("http://127.0.0.1:5000/investment-overrides.js");module.setup();})()})()

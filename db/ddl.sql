@@ -42,8 +42,6 @@ CREATE TABLE portfolio_manager.portfolio (
     CONSTRAINT portfolio_owner_id_fk FOREIGN KEY (owner_id) REFERENCES portfolio_manager.portfolio_owner(owner_id)
 );
 
-
-
 CREATE TABLE portfolio_manager."security" (
 	security_id uuid NOT NULL DEFAULT uuid_generate_v4(),
 	secondary_id int4 NULL,
@@ -53,6 +51,8 @@ CREATE TABLE portfolio_manager."security" (
 	daily_flag int2 NOT NULL DEFAULT 0,
 	four_hour_flag int2 NOT NULL DEFAULT '0'::smallint,
 	current_price numeric(10, 2) NULL,
+	security_type varchar(15) NOT NULL DEFAULT 'stock'::character varying,
+	management_company varchar(100) NULL,
 	CONSTRAINT security_pkey PRIMARY KEY (security_id),
 	CONSTRAINT ticker_unique UNIQUE (symbol)
 );
@@ -165,24 +165,21 @@ END;
 $function$;
 
 CREATE OR REPLACE FUNCTION public.get_positions_by_portfolio(p_portfolio_id uuid)
-RETURNS TABLE(
-    position_id uuid,
-    security_id uuid,
-    quantity int,
-    purchase_price numeric,
-    calculated_market_value numeric
-)
-LANGUAGE plpgsql
+ RETURNS TABLE(position_id uuid, security_id uuid, quantity integer, 
+ purchase_price numeric, calculated_market_value numeric
+ , symbol varchar, security_name varchar)
+ LANGUAGE plpgsql
 AS $function$
 BEGIN
     RETURN QUERY 
     SELECT 
         p.position_id, 
         p.security_id, 
-        s.secondary_id,
         p.quantity, 
         p.purchase_price, 
-        (p.quantity * s.current_price) as calculated_market_value
+        (p.quantity * s.current_price) as calculated_market_value,
+        s.symbol,
+        s.security_name
     FROM 
         portfolio_manager.position p
     JOIN 
@@ -190,7 +187,7 @@ BEGIN
     WHERE 
         p.portfolio_id = p_portfolio_id;
 END;
-$function$;
+$function$
 
 CREATE OR REPLACE FUNCTION public.add_position(
     p_portfolio_id uuid,
@@ -343,6 +340,67 @@ BEGIN
 END;
 $function$;
 
+-- create a function to add a new security to the portfolio
+
+CREATE OR REPLACE FUNCTION public.add_security(
+    _security_id uuid,
+    _secondary_id int4,
+    _symbol varchar(10),
+    _security_name varchar(60),
+    _weekly_flag int2 = 0,
+    _daily_flag int2 = 0,
+    _four_hour_flag int2 = 0,
+    _current_price numeric(10, 2) = 0.00,
+    _security_type varchar(15) = 'stock',
+    _management_company varchar(100) = NULL
+)
+RETURNS uuid AS
+$$
+DECLARE
+    _result uuid;
+BEGIN
+    INSERT INTO portfolio_manager."security" (
+        security_id,
+        secondary_id,
+        symbol,
+        security_name,
+        weekly_flag,
+        daily_flag,
+        four_hour_flag,
+        current_price,
+        security_type,
+        management_company
+    )
+    VALUES (
+        _security_id,
+        _secondary_id,
+        _symbol,
+        _security_name,
+        _weekly_flag,
+        _daily_flag,
+        _four_hour_flag,
+        _current_price,
+        _security_type,
+        _management_company
+    )
+    ON CONFLICT (symbol)
+    DO UPDATE SET
+        security_id = excluded.security_id,
+        secondary_id = excluded.secondary_id,
+        security_name = excluded.security_name,
+        weekly_flag = excluded.weekly_flag,
+        daily_flag = excluded.daily_flag,
+        four_hour_flag = excluded.four_hour_flag,
+        current_price = excluded.current_price,
+        security_type = excluded.security_type,
+        management_company = excluded.management_company
+    RETURNING security_id INTO _result;
+
+    RETURN _result;
+END;
+$$
+LANGUAGE 'plpgsql';
+
 
 CREATE OR REPLACE FUNCTION public.update_security_price(p_security_id uuid, p_new_price numeric)
 RETURNS void
@@ -406,6 +464,34 @@ BEGIN
     PERFORM portfolio_manager.add_transaction(v_portfolio_id, v_appl_id, 10, 150.00);
 END;
 $$;
+
+
+
+-- Add a function to add a posiiton to a portfolio returns new position_id
+-- default target_quantity to 0
+-- default initial_quantity to 0
+CREATE OR REPLACE FUNCTION public.add_position(
+    p_portfolio_id uuid,
+    p_security_id uuid,
+    p_initial_quantity int,
+    p_purchase_price numeric,
+    p_target_quantity int
+)   
+RETURNS uuid
+LANGUAGE plpgsql
+AS $function$
+DECLARE
+    v_new_position_id uuid;
+BEGIN
+    INSERT INTO portfolio_manager.position (portfolio_id, security_id, quantity, purchase_price, target_quantity)
+    VALUES (p_portfolio_id, p_security_id, p_initial_quantity, p_purchase_price, p_target_quantity)
+    RETURNING position_id INTO v_new_position_id;
+
+    RETURN v_new_position_id;
+END;
+$function$;
+
+
 
 
 /*
