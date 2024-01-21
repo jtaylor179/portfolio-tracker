@@ -18,7 +18,7 @@ class PortfolioWidget extends LitElement {
             {
                 mode: "watch",
                 name: "stockDataInterceptor",
-                watcher: this.analyzeRequest,
+                watcher: this.analyzeRequest.bind(this),
                 urlPattern: /tvc4\.investing\.com\/615bca0a5a51af775ac1b774a5323123\/1635741342\/1\/1\/8\/history\?symbol=\d+&resolution=\w+&from=\d+&to=\d+/,
                 method: 'GET'
             }
@@ -26,17 +26,28 @@ class PortfolioWidget extends LitElement {
     }
     
     analyzeRequest(config, response) {
-        debugger;
         const url = new URL(response.url);
-        const symbol = url.searchParams.get('symbol');
+        const secondaryId = url.searchParams.get('symbol');
         const resolution = url.searchParams.get('resolution');
         const from = url.searchParams.get('from');
         const to = url.searchParams.get('to');
         const responseText = response.responseText;
         const responseJson = JSON.parse(responseText);
     
-        if(symbol && resolution && from && to) {
-            console.log(`Request detected for symbol ${symbol} with resolution ${resolution}, from ${from} to ${to}`);
+        if(secondaryId && resolution && from && to) {
+            console.log(`Request detected for symbol ${secondaryId} with resolution ${resolution}, from ${from} to ${to}`);
+            this.saveStockData(parseInt(secondaryId), resolution, from, to, responseJson);
+        }
+    }
+
+    async saveStockData(secondaryId, resolution, from, to, responseJson) {
+        const currentPosition = this.positions.find(p => p.position_id === this.selectedPositionId);
+        if(currentPosition) {
+            if(currentPosition.secondary_id !== secondaryId) {
+                await this.portfolioManager.addSecurity(secondaryId, currentPosition.symbol, currentPosition.symbol, 'stock');
+            }
+            // const history = JSON.stringify(responseJson);
+            // this.portfolioManager.addStockPriceHistory(securityId, history);
         }
     }
     
@@ -51,6 +62,7 @@ class PortfolioWidget extends LitElement {
         this.portfolioManager = new PortfolioManagerService();
         this.currentSymbol = '';
         this.stockRotationTimeout = null;
+        this.isCycling = false;
         // Subscribe to the custom log event
         // XHREventDispatcher.addEventListener('xhrLogEvent', function(logDetail) {
         //     console.log('Logged Request:', logDetail);
@@ -89,16 +101,20 @@ class PortfolioWidget extends LitElement {
 
     // cycle through positions in current portfolio - every 30 seconds
     async cyclePositions() {
-        this.showNextPosition();
-        this.stockRotationTimeout = setTimeout(this.showNextPosition.bind(this), 30000);
+        if(this.isCycling) {
+            this.pauseRotation();
+            this.isCycling = false;
+        } else {
+            this.showNextPosition();
+            this.stockRotationTimeout = setInterval(this.showNextPosition.bind(this), 10000);
+        }
     }
 
     async pauseRotation() {
-        clearTimeout(this.stockRotationTimeout);
+        clearInterval(this.stockRotationTimeout);
     }
 
     async showPreviousPosition() {
-        this.pauseRotation();
         if (this.positions.length > 0) {
             const positionIndex = this.positions.findIndex(p => p.position_id === this.selectedPositionId);
             let previousPositionIndex = positionIndex - 1;
@@ -112,7 +128,6 @@ class PortfolioWidget extends LitElement {
     }
 
     async showNextPosition() {
-        this.pauseRotation();
         if (this.positions.length > 0) {
             const positionIndex = this.positions.findIndex(p => p.position_id === this.selectedPositionId);
             let nextPositionIndex = positionIndex + 1;
