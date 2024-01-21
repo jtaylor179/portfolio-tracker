@@ -53,7 +53,7 @@ window.XMLHttpRequest = class {
                 return pattern.test(this._url) && o.method === this._method;
             });
 
-            if (override) {
+            if (override && override.mode === 'replace') {
                 try {
                     if (override.preprocessor) {
                         override = await override.preprocessor({ method: this._method, url: this._url, headers: this._headers, payload: this._payload });
@@ -77,9 +77,9 @@ window.XMLHttpRequest = class {
                     this.dispatchEvent(new Event('load'));
                     this.dispatchEvent(new Event('loadend'));
 
-                    if (typeof (override.watcher) === 'function') {
-                        await override.watcher(override, { status: response.status, responseJson: jsonResponse, responseText: textResponse });
-                    }
+                    // if (typeof (override.watcher) === 'function') {
+                    //     await override.watcher(override, { status: response.status, responseJson: jsonResponse, responseText: textResponse });
+                    // }
                 } catch (error) {
                     console.error('Fetch error:', error);
                     this.dispatchEvent(new Event('error'));
@@ -105,6 +105,16 @@ window.XMLHttpRequest = class {
                 responseTime: responseTime
             };
             xhrEventDispatcher.dispatchEvent('xhrLogEvent', logDetail);
+            // See if any watch overrides exist for this request
+            const override = XMLHttpRequest.overrides.find(o => {
+                const pattern = new RegExp(o.urlPattern);
+                return pattern.test(xhr._url) && o.method === xhr._method;
+            });
+            if (override && override.mode === 'watch') {
+                // add full payload to logDetail
+                logDetail.responseText = xhr.responseText;
+                override.watcher(override, logDetail);
+            }
         });
 
         return xhr;
