@@ -71,6 +71,8 @@ class PortfolioWidget extends LitElement {
         this.currentSymbol = '';
         this.stockRotationTimeout = null;
         this.isCycling = false;
+        this.currentTimeframe = '4h';
+        this.availableTimeframes = [{timeframe: '4h', selector:'4 hour'}, {timeframe:'2h', selector:'2 hour'}, { timeframe: '1D', selector: '1 day'}];
         // Subscribe to the custom log event
         // XHREventDispatcher.addEventListener('xhrLogEvent', function(logDetail) {
         //     console.log('Logged Request:', logDetail);
@@ -101,6 +103,8 @@ class PortfolioWidget extends LitElement {
     // refactor portfolio list load logic into a method
     async getPortfolios() {
         this.portfolios = await this.portfolioManager.getPortfoliosByOwner(this.ownerId);
+        // set timeframe
+        await this.setTimeframe('4h');
         if (this.portfolios.length > 0) {
             this.selectedPortfolioId = this.portfolios[0].portfolio_id;
             await this.updatePositions();
@@ -115,13 +119,23 @@ class PortfolioWidget extends LitElement {
         } else {
             this.isCycling = true;
             this.showNextPosition();
-            this.stockRotationTimeout = setInterval(this.showNextPosition.bind(this), 30000);
+           // this.stockRotationTimeout = setTimeout(this.showNextPosition.bind(this), 15000);
 
         }
     }
 
     async pauseRotation() {
         clearInterval(this.stockRotationTimeout);
+    }
+
+    async handlePreviousClick() {
+        this.pauseRotation();
+        await this.showPreviousPosition();
+    }
+
+    async handleNextClick() {
+        this.pauseRotation();   
+        await this.showNextPosition();
     }
 
     async showPreviousPosition() {
@@ -136,6 +150,7 @@ class PortfolioWidget extends LitElement {
             // this.selectedPositionId = previousPosition.position_id;
             await this.setSymbol(this.selectedPosition.symbol);
         }
+  
     }
 
     async showNextPosition() {
@@ -145,15 +160,16 @@ class PortfolioWidget extends LitElement {
             let nextPositionIndex = positionIndex + 1;
             if (nextPositionIndex >= this.positions.length) {
                 nextPositionIndex = 0;
+                await this.toggleTimeframe();
             }
             this.selectedPosition = this.positions[nextPositionIndex];
             // this.selectedPositionId = nextPosition.position_id;
             await this.setSymbol(this.selectedPosition.symbol);
         }
+        if(this.isCycling) {
+            this.stockRotationTimeout = setTimeout(this.showNextPosition.bind(this), 15000);
+        } 
     }
-
-
-
 
     async _onPortfolioSelect(event) {
         this.selectedPortfolioId = event.target.value || '';
@@ -161,6 +177,7 @@ class PortfolioWidget extends LitElement {
     }
 
     _onPositionSelect(event) {
+        this.pauseRotation();
         const selectedPositionId = event.target.value;
         this.selectedPosition = this.positions.find(p => p.position_id === selectedPositionId);
         // const symbol = this.positions.find(p => p.position_id === this.selectedPositionId).symbol;
@@ -189,6 +206,59 @@ class PortfolioWidget extends LitElement {
         return currentDomain === 'https://tvc-invdn-com.investing.com';
     }
 
+    getContentDocument() {
+        const iframe = document.body.querySelectorAll("iframe")[0];
+        if (iframe) {
+            return iframe.contentWindow.document;
+        }
+        return null;
+    }
+
+    async toggleTimeframe() {
+        // get index of current timeframe
+        const currentIndex = this.availableTimeframes.findIndex(tf => tf.timeframe === this.currentTimeframe);
+        // get next timeframe
+        let nextIndex = currentIndex + 1;
+        if(nextIndex >= this.availableTimeframes.length) {
+            nextIndex = 0;
+        }
+        const nextTimeframe = this.availableTimeframes[nextIndex];
+        // set timeframe
+        await this.setTimeframe(nextTimeframe.timeframe);
+        Promise.resolve();
+    }
+
+    async setTimeframe(timeframe){
+        // get reference to timeframe selector
+        const timeframeDef = this.availableTimeframes.find(tf => tf.timeframe === timeframe);
+
+
+        // get a reference <span class="apply-common-tooltip selected">4h</span> inside <div class="intervals-container"> ensure text content matches timeframe
+        var timeframeSelectedElement = this.getContentDocument().querySelector(`div.intervals-container span.apply-common-tooltip.selected`);
+        if(!timeframeSelectedElement || timeframeSelectedElement.textContent !== timeframeDef.timeframe) {
+            // pop open the timeframe selector
+            this.getContentDocument().querySelector("div.intervals-container div.tv-caret").click();
+            // wait for the timeframe selector to open
+            await this.timeoutResolver(2000);
+            // get a reference to the select option with matching timeframe display 
+            // select item looks like <span class="item active">4 hour</span> inside div with class charts-popup-list
+            let timeframeRef;
+            this.getContentDocument().querySelectorAll('div.charts-popup-list span.item').forEach((item) => {
+                if (item.textContent.includes(timeframeDef.selector)) {
+                    timeframeRef = item;
+                }
+            });
+            if(timeframeRef) {
+                timeframeRef.click();
+            }
+            // wait 2 seconds
+            await this.timeoutResolver(2000);
+        }
+        this.currentTimeframe = timeframe;
+        Promise.resolve();
+    
+    }
+
     async setSymbol(symbol) {
 
         await this.timeoutResolver(2000);
@@ -196,9 +266,7 @@ class PortfolioWidget extends LitElement {
         this.currentSymbol = symbol;
 
         // get a reference
-        var symbolRef = document.body
-            .querySelectorAll("iframe")[0]
-            .contentWindow.document.querySelector(".symbol-edit");
+        var symbolRef = this.getContentDocument().querySelector(".symbol-edit");
 
         if (symbolRef) {
 
@@ -329,9 +397,9 @@ class PortfolioWidget extends LitElement {
                 </div>
                 <div style="flex:1">
                 <!-- back button to naviate to previous position -->
-                    <button @click="${this.showPreviousPosition}"><<</button>
+                    <button @click="${this.handlePreviousClick}"><<</button>
                     <button @click="${this.cyclePositions}"s>Play</button>
-                    <button @click="${this.showNextPosition}">>></button>
+                    <button @click="${this.handleNextClick}">>></button>
                 </div>
 
             </div>
