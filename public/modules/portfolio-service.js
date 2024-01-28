@@ -105,7 +105,50 @@ export class PortfolioManagerService {
         return data;
     }
 
+    // new db function to call public.add_security_price_history(p_symbol text, p_timeframe char varying,  p_metrics json)
+    // CREATE OR REPLACE FUNCTION public.add_security_price_history(security_id integer, timeframe varchar, _history json)
+
+//     s
+// : 
+// "Searched for the function public.add_security_price_history with parameters p_metrics, p_symbol, p_timeframe or with a single unnamed json/jsonb parameter, but no matches were found in the schema cache."
+// hint
+// : 
+// "Perhaps you meant to call the function public.add_security_price_history(p_history, p_security_id, p_timeframe)"
+// message
+// : 
+// "Could not find the function public.add_security_price_history(p_metrics, p_symbol, p_timeframe) in the schema cache"
+
+
+    async addSecurityPriceHistory(securityId, timeframe, history) {
+        const { data, error } = await this.supabase
+            .rpc('add_security_price_history', {
+                p_security_id: securityId,
+                p_timeframe: timeframe,
+                p_history: history
+            });
+
+        if (error) {
+            console.error('Error calling function:', error);
+            return null;
+        }
+
+        return data;
+    }
+
+
+
     /* 
+
+
+let { data, error } = await supabase
+  .rpc('add_security_price_history', {
+    p_metrics, 
+    p_symbol, 
+    p_timeframe
+  })
+if (error) console.error(error)
+else console.log(data)
+
 
 CREATE OR REPLACE FUNCTION public.add_position(p_portfolio_id uuid, p_security_id uuid, p_initial_quantity integer, p_purchase_price numeric, p_target_quantity integer)
  RETURNS void

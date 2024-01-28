@@ -6,7 +6,8 @@ class PortfolioWidget extends LitElement {
     static get properties() {
         return {
             selectedPortfolioId: { type: String },
-            selectedPositionId: { type: String },
+            // selectedPositionId: { type: String },
+            selectedPosition: { type: Object },
             portfolios: { type: Array },
             positions: { type: Array },
             ownerId: { type: String }
@@ -41,12 +42,18 @@ class PortfolioWidget extends LitElement {
     }
 
     async saveStockData(secondaryId, resolution, from, to, responseJson) {
-        const currentPosition = this.positions.find(p => p.position_id === this.selectedPositionId);
-        if(currentPosition) {
-            if(currentPosition.secondary_id !== secondaryId) {
+        const currentPosition = this.selectedPosition;
+        if(this.selectedPosition) {
+            if(this.selectedPosition.secondary_id !== secondaryId) {
                 await this.portfolioManager.addSecurity(secondaryId, currentPosition.symbol, currentPosition.symbol, 'stock');
             }
-            // const history = JSON.stringify(responseJson);
+
+            // Destructure properties a and b
+            const { t, c } = responseJson
+
+            // Create a new object with just a and b
+            const history = { t, c };
+            await this.portfolioManager.addSecurityPriceHistory(currentPosition.security_id, resolution, history);
             // this.portfolioManager.addStockPriceHistory(securityId, history);
         }
     }
@@ -54,8 +61,9 @@ class PortfolioWidget extends LitElement {
 
     constructor() {
         super();
+        
         this.selectedPortfolioId = '';
-        this.selectedPositionId = '';
+        this.selectedPosition = null;
         this.portfolios = [];
         this.positions = [];
         this.ownerId = '59b880ab-0f59-4d7d-a8f7-515c82f2d8f9';
@@ -105,8 +113,10 @@ class PortfolioWidget extends LitElement {
             this.pauseRotation();
             this.isCycling = false;
         } else {
+            this.isCycling = true;
             this.showNextPosition();
-            this.stockRotationTimeout = setInterval(this.showNextPosition.bind(this), 10000);
+            this.stockRotationTimeout = setInterval(this.showNextPosition.bind(this), 30000);
+
         }
     }
 
@@ -116,27 +126,29 @@ class PortfolioWidget extends LitElement {
 
     async showPreviousPosition() {
         if (this.positions.length > 0) {
-            const positionIndex = this.positions.findIndex(p => p.position_id === this.selectedPositionId);
+            const selectedPositionId = this.selectedPosition.position_id;
+            const positionIndex = this.positions.findIndex(p => p.position_id === selectedPositionId);
             let previousPositionIndex = positionIndex - 1;
             if (previousPositionIndex < 0) {
                 previousPositionIndex = this.positions.length - 1;
             }
-            const previousPosition = this.positions[previousPositionIndex];
-            this.selectedPositionId = previousPosition.position_id;
-            await this.setSymbol(previousPosition.symbol);
+            this.selectedPosition = this.positions[previousPositionIndex];
+            // this.selectedPositionId = previousPosition.position_id;
+            await this.setSymbol(this.selectedPosition.symbol);
         }
     }
 
     async showNextPosition() {
         if (this.positions.length > 0) {
-            const positionIndex = this.positions.findIndex(p => p.position_id === this.selectedPositionId);
+            const selectedPositionId = this.selectedPosition.position_id;
+            const positionIndex = this.positions.findIndex(p => p.position_id === selectedPositionId);
             let nextPositionIndex = positionIndex + 1;
             if (nextPositionIndex >= this.positions.length) {
                 nextPositionIndex = 0;
             }
-            const nextPosition = this.positions[nextPositionIndex];
-            this.selectedPositionId = nextPosition.position_id;
-            await this.setSymbol(nextPosition.symbol);
+            this.selectedPosition = this.positions[nextPositionIndex];
+            // this.selectedPositionId = nextPosition.position_id;
+            await this.setSymbol(this.selectedPosition.symbol);
         }
     }
 
@@ -149,9 +161,10 @@ class PortfolioWidget extends LitElement {
     }
 
     _onPositionSelect(event) {
-        this.selectedPositionId = event.target.value;
-        const symbol = this.positions.find(p => p.position_id === this.selectedPositionId).symbol;
-        this.setSymbol(symbol);
+        const selectedPositionId = event.target.value;
+        this.selectedPosition = this.positions.find(p => p.position_id === selectedPositionId);
+        // const symbol = this.positions.find(p => p.position_id === this.selectedPositionId).symbol;
+        this.setSymbol(this.selectedPosition.symbol);
     }
 
     async updatePositions(currPositionId = null, curSymbol = null) {
@@ -162,8 +175,9 @@ class PortfolioWidget extends LitElement {
             positionId = this.positions[0].position_id;
             symbol = this.positions[0].symbol;
         }
+        this.selectedPosition = this.positions.find(p => p.position_id === positionId);
 
-        this.selectedPositionId = positionId;
+        //this.selectedPositionId = positionId;
         await this.setSymbol(symbol);
     }
 
@@ -267,7 +281,7 @@ class PortfolioWidget extends LitElement {
 
     renderPortfolioSelect() {
         return html`
-            <div style="width:180px">
+            <div style="width:160px">
                 <label for="portfolio-select">Portfolio:</label>
                 <select id="portfolio-select" @change="${this._onPortfolioSelect}">
                     ${this.portfolios.map(portfolio => html`
@@ -281,12 +295,13 @@ class PortfolioWidget extends LitElement {
     }
 
     renderPositionSelect() {
+        console.log('renderPositionSelect');
         return html`
             <div style="width:140px;">
                 <label for="position-select">Position:</label>
                 <select id="position-select" @change="${this._onPositionSelect}">
                     ${this.positions.map(position => html`
-                        <option value="${position.position_id}" ?selected="${this.selectedPositionId === position.position_id}">
+                        <option value="${position.position_id}" ?selected="${this.selectedPosition && this.selectedPosition.position_id === position.position_id}">
                             ${position.symbol}
                         </option>
                     `)}
@@ -298,12 +313,19 @@ class PortfolioWidget extends LitElement {
     render() {
         return html`
            <!-- display horizontal row of portfolio and position selectors -->
-           <div style="display: flex;position:absolute;left:800px;top:10px;">
+           <div style="display: flex;position:absolute;left:750px;top:10px;">
                 ${this.renderPortfolioSelect()}
                 ${this.renderPositionSelect()}
-                <div style="width:150px;">
+                <div style="width:30px;">
                 <!-- button to add a new position to current portfolio -->
-                    <button @click="${this.addPosition}">Add Position</button>
+                    <button @click="${this.addPosition}">+</button>
+                </div>
+                <div style="width:150px;">
+                    <span>Shares: 0</span>
+                    ${this.selectedPosition && this.selectedPosition.weekly_flag === 1 ? html`<span style="color:blue;font-weight:bold;">W</span>` : ''}
+                    ${this.selectedPosition && this.selectedPosition.daily_flag === 1 ? html`<span style="color:blue;font-weight:bold;">D</span>` : ''}
+                    ${this.selectedPosition && this.selectedPosition.four_hour_flag === 1 ? html`<span style="color:blue;font-weight:bold;">4H</span>` : ''}
+                    <span></span>
                 </div>
                 <div style="flex:1">
                 <!-- back button to naviate to previous position -->

@@ -1,7 +1,3 @@
--- DROP SCHEMA public;
-
-CREATE SCHEMA public AUTHORIZATION postgres;
-
 -- DROP FUNCTION public.add_portfolio(uuid, varchar, numeric);
 
 CREATE OR REPLACE FUNCTION public.add_portfolio(p_owner_id uuid, p_portfolio_name character varying, p_funds_available numeric)
@@ -41,29 +37,85 @@ $function$
 -- DROP FUNCTION public.add_position(uuid, uuid, int4, numeric, int4);
 
 CREATE OR REPLACE FUNCTION public.add_position(p_portfolio_id uuid, p_security_id uuid, p_initial_quantity integer, p_purchase_price numeric, p_target_quantity integer)
- RETURNS void
+ RETURNS uuid
  LANGUAGE plpgsql
 AS $function$
+DECLARE
+    v_new_position_id uuid;
 BEGIN
-    -- Insert a new position into the position table
     INSERT INTO portfolio_manager.position (portfolio_id, security_id, quantity, purchase_price, target_quantity)
-    VALUES (p_portfolio_id, p_security_id, p_initial_quantity, p_purchase_price, p_target_quantity);
+    VALUES (p_portfolio_id, p_security_id, p_initial_quantity, p_purchase_price, p_target_quantity)
+    on conflict do nothing
+    RETURNING position_id INTO v_new_position_id;
+
+    RETURN v_new_position_id;
+END;
+$function$
+;
+
+-- DROP FUNCTION public.add_security(int4, varchar, varchar, int2, int2, int2, numeric, varchar, varchar);
+
+CREATE OR REPLACE FUNCTION public.add_security(_secondary_id integer, _symbol character varying, _security_name character varying, _weekly_flag smallint DEFAULT 0, _daily_flag smallint DEFAULT 0, _four_hour_flag smallint DEFAULT 0, _current_price numeric DEFAULT 0.00, _security_type character varying DEFAULT 'stock'::character varying, _management_company character varying DEFAULT NULL::character varying)
+ RETURNS uuid
+ LANGUAGE plpgsql
+AS $function$
+DECLARE
+    _result uuid;
+BEGIN
+    INSERT INTO portfolio_manager."security" (
+        secondary_id,
+        symbol,
+        security_name,
+        weekly_flag,
+        daily_flag,
+        four_hour_flag,
+        current_price,
+        security_type,
+        management_company
+    )
+    VALUES (
+        _secondary_id,
+        upper(_symbol),
+        _security_name,
+        _weekly_flag,
+        _daily_flag,
+        _four_hour_flag,
+        _current_price,
+        _security_type,
+        _management_company
+    )
+    ON CONFLICT (symbol)
+    DO UPDATE SET
+        secondary_id = excluded.secondary_id,
+        security_name = excluded.security_name,
+        ---weekly_flag = excluded.weekly_flag,
+        ---daily_flag = excluded.daily_flag,
+        ---four_hour_flag = excluded.four_hour_flag,
+        -- current_price = excluded.current_price,
+        security_type = excluded.security_type,
+        management_company = excluded.management_company
+    RETURNING security_id INTO _result;
+
+    RETURN _result;
 END;
 $function$
 ;
 
 -- DROP FUNCTION public.add_security_metric(text, json);
 
-CREATE OR REPLACE FUNCTION public.add_security_metric(p_symbol text, p_metrics json)
+select * from public.add_security_price_history('AAPL','D', '{}'::json)
+select * from portfolio_manager.security_price_history 
+
+CREATE OR REPLACE FUNCTION public.add_security_price_history(p_symbol text, p_timeframe char varying,  p_metrics json)
  RETURNS void
  LANGUAGE plpgsql
 AS $function$
 BEGIN
-    INSERT INTO public.security_metric (security_id, last_updated, metrics) 
-    SELECT security_id, now(), p_metrics 
-    FROM public.security 
+    INSERT INTO portfolio_manager.security_price_history (security_id, last_updated, metrics, timeframe) 
+    SELECT security_id, now(), p_metrics, p_timeframe
+    FROM portfolio_manager.security 
     WHERE symbol = p_symbol
-    ON CONFLICT (security_metrics_id)
+    ON CONFLICT (security_id, timeframe)
     DO UPDATE SET metrics = EXCLUDED.metrics, 
                   last_updated = now();
 END;
@@ -227,7 +279,34 @@ $function$
 
 -- DROP FUNCTION public.get_positions_by_portfolio(uuid);
 
-null;
+CREATE OR REPLACE FUNCTION public.get_positions_by_portfolio(p_portfolio_id uuid)
+ RETURNS TABLE(position_id uuid, security_id uuid, quantity integer, purchase_price numeric, calculated_market_value numeric, symbol character varying, security_name character varying, secondary_id integer, daily_flag smallint, weekly_flag smallint, four_hour_flag smallint)
+ LANGUAGE plpgsql
+AS $function$
+BEGIN
+    RETURN QUERY 
+    SELECT 
+        p.position_id, 
+        p.security_id, 
+        p.quantity, 
+        p.purchase_price, 
+        (p.quantity * s.current_price) as calculated_market_value,
+        s.symbol,
+        s.security_name,
+        s.secondary_id,
+        s.daily_flag,
+        s.weekly_flag,
+        s.four_hour_flag
+    FROM 
+        portfolio_manager.position p
+    JOIN 
+        portfolio_manager.security s ON p.security_id = s.security_id
+    WHERE 
+        p.portfolio_id = p_portfolio_id
+    order by s.symbol;
+END;
+$function$
+;
 
 -- DROP FUNCTION public.get_security_positions();
 
@@ -239,7 +318,8 @@ BEGIN
   RETURN QUERY 
   SELECT s.stock_id, s.ticker, p.quantity, p.market_value
   FROM stock s 
-  INNER JOIN position p ON s.stock_id = p.stock_id;
+  INNER JOIN position p ON s.stock_id = p.stock_id
+  ORDER BY s.ticker;
 END;
 $function$
 ;
@@ -259,20 +339,25 @@ END;
 $function$
 ;
 
--- DROP FUNCTION public.insert_stock_price_history(int4, json);
+-- DROP FUNCTION public.add_security_price_history
 
-CREATE OR REPLACE FUNCTION public.insert_stock_price_history(_stock_id integer, _history json)
+(int4, json);
+
+CREATE OR REPLACE FUNCTION public.add_security_price_history(p_security_id uuid, p_timeframe varchar, p_history json)
  RETURNS void
  LANGUAGE plpgsql
+ SECURITY DEFINER -- Add this line
 AS $function$
 BEGIN
-    INSERT INTO public.stock_price_history (stock_id, history)
-    VALUES (_stock_id, _history)
-    ON CONFLICT (stock_id) 
-    DO UPDATE SET history = EXCLUDED.history;
+    INSERT INTO portfolio_manager.security_price_history (security_id, timeframe, metrics)
+    VALUES (p_security_id, p_timeframe, p_history)
+    ON CONFLICT (security_id, timeframe) 
+    DO UPDATE SET metrics = EXCLUDED.metrics;
 END;
 $function$
 ;
+
+add_security_price_history
 
 -- DROP FUNCTION public.remove_position_and_transactions(uuid);
 
@@ -336,3 +421,26 @@ BEGIN
 END;
 $function$
 ;
+
+CREATE OR REPLACE FUNCTION public.testinsert(p_symbol varchar)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER -- Add this line
+AS $function$
+BEGIN 
+  INSERT INTO portfolio_manager.tablea(content) VALUES (p_symbol);
+END;
+$function$;
+
+
+select * from public.testinsert('aapl');
+
+select * from portfolio_manager.tablea t;
+
+GRANT USAGE ON SCHEMA public TO postgres;
+GRANT USAGE ON SCHEMA portfolio_manager TO postgres;
+
+
+GRANT ALL PRIVILEGES ON TABLE portfolio_manager.tablea TO postgres;
+
+

@@ -79,16 +79,23 @@ CREATE TABLE portfolio_manager."position" (
 
 -- Drop table
 
--- DROP TABLE portfolio_manager.security_metric;
+-- DROP TABLE portfolio_manager.security_price_history;
 
-CREATE TABLE portfolio_manager.security_metric (
-	security_metrics_id uuid NOT NULL DEFAULT uuid_generate_v4(),
-	security_id uuid NOT NULL,
-	last_updated timestamptz NOT NULL DEFAULT now(),
-	metrics json NOT NULL DEFAULT '{}'::json,
-	timeframe varchar(2) NULL,
-	CONSTRAINT security_metric_pkey PRIMARY KEY (security_metrics_id),
-	CONSTRAINT security_metric_security_id_fkey FOREIGN KEY (security_id) REFERENCES portfolio_manager."security"(security_id)
+GRANT INSERT ON portfolio_manager.security_price_history TO postgres;
+GRANT INSERT ON portfolio_manager.security_price_history TO supabase_admin;
+GRANT INSERT ON TABLE portfolio_manager.security_price_history TO authenticator;
+
+
+
+CREATE TABLE portfolio_manager.security_price_history (
+    security_price_history_id uuid NOT NULL DEFAULT uuid_generate_v4(),
+    security_id uuid NOT NULL,
+    last_updated timestamptz NOT NULL DEFAULT now(),
+    metrics json NOT NULL DEFAULT '{}'::json,
+    timeframe varchar(2) NULL,
+    CONSTRAINT security_price_history_pkey PRIMARY KEY (security_price_history_id),
+    CONSTRAINT security_price_history_security_id_fkey FOREIGN KEY (security_id) REFERENCES portfolio_manager."security"(security_id),
+    CONSTRAINT security_id_timeframe_unique UNIQUE (security_id, timeframe)
 );
 
 
