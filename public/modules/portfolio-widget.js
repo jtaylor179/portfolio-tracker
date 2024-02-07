@@ -2,6 +2,26 @@ import { LitElement, html } from 'https://cdn.jsdelivr.net/gh/lit/dist@2/core/li
 import { XHREventDispatcher } from './xhr-intercept.js';
 import { PortfolioManagerService } from './portfolio-service.js';
 
+import OpenAI from 'https://cdn.jsdelivr.net/npm/openai@4.26.0/+esm'
+
+const openai = new OpenAI({
+    apiKey: localStorage.getItem('openai_api_key'),
+    dangerouslyAllowBrowser: true 
+  });
+
+async function main() {
+    debugger;
+  const completion = await openai.chat.completions.create({
+    messages: [{ role: "system", content: "You are a helpful assistant." }],
+    model: "gpt-3.5-turbo",
+  });
+
+  console.log(completion.choices[0]);
+}
+
+main();
+
+
 class PortfolioWidget extends LitElement {
     static get properties() {
         return {
@@ -34,9 +54,10 @@ class PortfolioWidget extends LitElement {
         const to = url.searchParams.get('to');
         const responseText = response.responseText;
         const responseJson = JSON.parse(responseText);
+        const timeframe = this.currentTimeframe;
     
         if(secondaryId && resolution && from && to) {
-            console.log(`Request detected for symbol ${secondaryId} with resolution ${resolution}, from ${from} to ${to}`);
+            console.log(`Request detected for symbol ${secondaryId} with resolution ${resolution}, timefream ${timeframe} from ${from} to ${to}`);
             this.saveStockData(parseInt(secondaryId), resolution, from, to, responseJson);
         }
     }
@@ -72,7 +93,7 @@ class PortfolioWidget extends LitElement {
         this.stockRotationTimeout = null;
         this.isCycling = false;
         this.currentTimeframe = '4h';
-        this.availableTimeframes = [{timeframe: '4h', selector:'4 hour'}, {timeframe:'2h', selector:'2 hour'}, { timeframe: '1D', selector: '1 day'}];
+        this.availableTimeframes = [{timeframe: '4h', selector:'4 hour'},{ timeframe: '1D', selector: '1 day'}];
         // Subscribe to the custom log event
         // XHREventDispatcher.addEventListener('xhrLogEvent', function(logDetail) {
         //     console.log('Logged Request:', logDetail);
