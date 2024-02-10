@@ -1,28 +1,29 @@
 import { LitElement, html } from 'https://cdn.jsdelivr.net/gh/lit/dist@2/core/lit-core.min.js';
 import { XHREventDispatcher } from './xhr-intercept.js';
 import { PortfolioManagerService } from './portfolio-service.js';
-import {Big, SMA}  from 'https://esm.run/trading-signals';
+// import {Big, SMA}  from 'https://esm.run/trading-signals';
+import { MACDAnalysis, ema26129Config } from './macd-analysis-module.js';
 
 import OpenAI from 'https://cdn.jsdelivr.net/npm/openai@4.26.0/+esm'
 
-const sma = new SMA(3);
+// const sma = new SMA(3);
 
-// You can add numbers individually:
-sma.update(40);
-sma.update(30);
-sma.update(20);
+// // You can add numbers individually:
+// sma.update(40);
+// sma.update(30);
+// sma.update(20);
 
-// You can add multiple numbers at once:
-sma.updates([20, 40, 80]);
+// // You can add multiple numbers at once:
+// sma.updates([20, 40, 80]);
 
-// You can add strings:
-sma.update('10');
+// // You can add strings:
+// sma.update('10');
 
-// You can add arbitrary-precision decimals:
-sma.update(new Big(30));
+// // You can add arbitrary-precision decimals:
+// sma.update(new Big(30));
 
-// You can get the result in various formats:
-console.log(sma.getResult().toFixed(2)); // "40.00"
+// // You can get the result in various formats:
+// console.log(sma.getResult().toFixed(2)); // "40.00"
 
 const openai = new OpenAI({
     apiKey: localStorage.getItem('openai_api_key'),
@@ -82,6 +83,15 @@ class PortfolioWidget extends LitElement {
         }
     }
 
+    analyzeData(data) {
+
+        const analysisResults = (new MACDAnalysis(ema26129Config)).analyze(data);
+
+        console.log("Last Signal:", analysisResults.lastSignal);
+        console.log("Signal History:", analysisResults.signalHistory);
+    }
+
+
     async saveStockData(secondaryId, resolution, from, to, responseJson) {
         const currentPosition = this.selectedPosition;
         if(this.selectedPosition) {
@@ -96,12 +106,15 @@ class PortfolioWidget extends LitElement {
             if(t.length < 200) {
                 return;
             }
-            console.log('saved symbol data: ', 'itemcount:'  + t.length, resolution)
+
 
             // Create a new object with just a and b
             const history = { t, c };
             await this.portfolioManager.addSecurityPriceHistory(currentPosition.security_id, resolution, history);
             // this.portfolioManager.addStockPriceHistory(securityId, history);
+                        
+            console.log('saved symbol data: ', 'itemcount:'  + t.length, resolution)
+            this.analyzeData(history);
         }
     }
     

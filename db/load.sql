@@ -12,3 +12,11 @@ VALUES('3f99a0be-0087-4209-a435-847f747760be'::uuid, 'a931668e-e608-40ed-8a9a-1d
 INSERT INTO portfolio_manager."position"
 (position_id, security_id, quantity, purchase_price, portfolio_id, target_quantity)
 VALUES('5d9b4802-b02a-457c-9bb4-acdbf2d09fd9'::uuid, '999cdb7c-eb7a-4927-82b0-8e768021e6bb'::uuid, 10, 150.00, 'ee880ddf-daa8-4eba-8d8e-36a627884b47'::uuid, 0);
+
+
+INSERT INTO portfolio_manager."security"
+(security_id, secondary_id, symbol, security_name, weekly_flag, daily_flag, four_hour_flag, current_price, security_type, management_company, nav)
+VALUES('a931668e-e608-40ed-8a9a-1da44a49c41c'::uuid, 6408, 'MSFT', 'Microsoft Corporation', 0, 0, 0, 300.00, 'stock', NULL, NULL);
+INSERT INTO portfolio_manager."security"
+(security_id, secondary_id, symbol, security_name, weekly_flag, daily_flag, four_hour_flag, current_price, security_type, management_company, nav)
+VALUES('999cdb7c-eb7a-4927-82b0-8e768021e6bb'::uuid, 252, 'AAPL', 'Apple Inc.', 0, 0, 0, 150.00, 'stock', NULL, NULL);
