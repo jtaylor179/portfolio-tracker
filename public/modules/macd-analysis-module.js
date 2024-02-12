@@ -65,14 +65,14 @@ export class MACDAnalysis {
 }
 
 // Export the MACDAnalysis class
-export const ema26129Config = {
+export const macd26129Config = {
     indicator: EMA,
     longInterval: 26,
     shortInterval: 12,
     signalInterval: 9,
 }
 
-
+/*
 const sampleData = {
     "t": [
         1697565600,
@@ -354,3 +354,4 @@ const analysisResult = macdAnalysis.analyze(sampleData);
 // Log the analysis result
 console.log('Analysis Result:', analysisResult);
 
+*/

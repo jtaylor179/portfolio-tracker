@@ -2,7 +2,8 @@ import { LitElement, html } from 'https://cdn.jsdelivr.net/gh/lit/dist@2/core/li
 import { XHREventDispatcher } from './xhr-intercept.js';
 import { PortfolioManagerService } from './portfolio-service.js';
 // import {Big, SMA}  from 'https://esm.run/trading-signals';
-import { MACDAnalysis, ema26129Config } from './macd-analysis-module.js';
+import { MACDAnalysis, macd26129Config } from './macd-analysis-module.js';
+import { EMACrossoverAnalysis, ema26129Config } from './ema-analysis-module.js';
 
 import OpenAI from 'https://cdn.jsdelivr.net/npm/openai@4.26.0/+esm'
 
@@ -85,10 +86,14 @@ class PortfolioWidget extends LitElement {
 
     analyzeData(data) {
 
-        const analysisResults = (new MACDAnalysis(ema26129Config)).analyze(data);
+        // const analysisResults = (new MACDAnalysis(ema26129Config)).analyze(data);
 
+        // console.log("Last Signal:", analysisResults.lastSignal);
+        // console.log("Signal History:", analysisResults.signalHistory);
+        const analysisResults = (new EMACrossoverAnalysis(ema26129Config)).analyze(data);
         console.log("Last Signal:", analysisResults.lastSignal);
         console.log("Signal History:", analysisResults.signalHistory);
+
     }
 
 
@@ -113,7 +118,7 @@ class PortfolioWidget extends LitElement {
             await this.portfolioManager.addSecurityPriceHistory(currentPosition.security_id, resolution, history);
             // this.portfolioManager.addStockPriceHistory(securityId, history);
                         
-            console.log('saved symbol data: ', 'itemcount:'  + t.length, resolution)
+            console.log('saved symbol: ' + this.currentSymbol + ' data: ', 'itemcount:'  + t.length, resolution)
             this.analyzeData(history);
         }
     }

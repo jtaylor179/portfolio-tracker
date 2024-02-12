@@ -565,9 +565,45 @@ var BigIndicatorSeries = class {
     return this.result = value;
   }
 };
+var NumberIndicatorSeries = class {
+  constructor() {
+    __publicField(this, "highest");
+    __publicField(this, "lowest");
+    __publicField(this, "result");
+  }
+  get isStable() {
+    return this.result !== void 0;
+  }
+  getResult() {
+    if (this.result === void 0) {
+      throw new NotEnoughDataError();
+    }
+    return this.result;
+  }
+  setResult(value) {
+    if (this.highest === void 0 || value > this.highest) {
+      this.highest = value;
+    }
+    if (this.lowest === void 0 || value < this.lowest) {
+      this.lowest = value;
+    }
+    return this.result = value;
+  }
+};
 
 // node_modules/trading-signals/dist/MA/MovingAverage.js
 var MovingAverage = class extends BigIndicatorSeries {
+  constructor(interval) {
+    super();
+    __publicField(this, "interval");
+    this.interval = interval;
+  }
+  updates(prices) {
+    prices.forEach((price) => this.update(price));
+    return this.result;
+  }
+};
+var FasterMovingAverage = class extends NumberIndicatorSeries {
   constructor(interval) {
     super();
     __publicField(this, "interval");
@@ -633,6 +669,37 @@ var EMA = class extends MovingAverage {
     }
   }
 };
+var FasterEMA = class extends FasterMovingAverage {
+  constructor(interval) {
+    super(interval);
+    __publicField(this, "interval");
+    __publicField(this, "pricesCounter", 0);
+    __publicField(this, "weightFactor");
+    this.interval = interval;
+    this.weightFactor = 2 / (this.interval + 1);
+  }
+  update(price) {
+    this.pricesCounter++;
+    if (this.result === void 0) {
+      this.result = price;
+    }
+    return this.setResult(price * this.weightFactor + this.result * (1 - this.weightFactor));
+  }
+  getResult() {
+    if (this.pricesCounter < this.interval) {
+      throw new NotEnoughDataError();
+    }
+    return this.result;
+  }
+  get isStable() {
+    try {
+      this.getResult();
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+};
 
 // node_modules/trading-signals/dist/MACD/MACD.js
 var MACD = class {
@@ -674,9 +741,49 @@ var MACD = class {
     return this.result;
   }
 };
+var FasterMACD = class {
+  constructor(short, long, signal) {
+    __publicField(this, "short");
+    __publicField(this, "long");
+    __publicField(this, "signal");
+    __publicField(this, "prices", []);
+    __publicField(this, "result");
+    this.short = short;
+    this.long = long;
+    this.signal = signal;
+  }
+  getResult() {
+    if (this.result === void 0) {
+      throw new NotEnoughDataError();
+    }
+    return this.result;
+  }
+  get isStable() {
+    return this.result !== void 0;
+  }
+  update(price) {
+    this.prices.push(price);
+    const short = this.short.update(price);
+    const long = this.long.update(price);
+    if (this.prices.length > this.long.interval) {
+      this.prices.shift();
+    }
+    if (this.prices.length === this.long.interval) {
+      const macd = short - long;
+      const signal = this.signal.update(macd);
+      return this.result = {
+        histogram: macd - signal,
+        macd,
+        signal
+      };
+    }
+  }
+};
 export {
   big_default as Big,
   EMA,
+  FasterEMA,
+  FasterMACD,
   MACD,
   SMA
 };
