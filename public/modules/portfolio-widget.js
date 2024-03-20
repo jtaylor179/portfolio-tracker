@@ -85,7 +85,7 @@ class PortfolioWidget extends LitElement {
         }
     }
 
-    analyzeData(data) {
+    analyzeData(data, adequateTimeframe = false) {
 
         // const analysisResults = (new MACDAnalysis(ema26129Config)).analyze(data);
 
@@ -123,11 +123,22 @@ class PortfolioWidget extends LitElement {
             this.buyOrSell = 'Sell';
         }
 
-
+        if(!adequateTimeframe) {
+            return;
+        }
+        let sendNotification = false;
+        // if buyOrSell = 'buy' and currentPosition number of shares is less than target quantity then send notification
+        if(this.buyOrSell === 'Buy' && this.selectedPosition.quantity < this.selectedPosition.target_quantity) {
+            sendNotification = true;
+        } 
+        // if buyOrSell = 'sell' and currentPosition number of shares is greater than 0 then send notification
+        else if(this.buyOrSell === 'Sell' && this.selectedPosition.quantity > 0) {
+            sendNotification = true;
+        }
         
-      
-        this.sendPushoverNotification('Stock Alert', `Signal: ${this.buyOrSell} for ${this.selectedPosition.symbol}`, priority);
-
+        if(sendNotification) {
+            this.sendPushoverNotification('Stock Alert', `Signal: ${this.buyOrSell} for ${this.selectedPosition.symbol}`, priority);
+        }
     }
 
     async sendPushoverNotification(title, message, priority = 0, sound = 'cashregister', device = 'all', retry = 30, expire = 10800) {
@@ -221,12 +232,14 @@ class PortfolioWidget extends LitElement {
             const finalTimestamp = timeSeries[timeSeries.length - 1];
             const currentTime = Math.floor(Date.now() / 1000);
             const diff = currentTime - finalTimestamp;
+            // only send notifications if more than 5 months of data
+            const adequateTimeframe = currentTime - timeSeries[0] > 15552000;
             if(diff < 345600) {
                 // get last price
                 const lastPrice = c[c.length - 1];
                 currentPosition.current_price = lastPrice;
                 await this.portfolioManager.updatePosition(currentPosition.position_id, currentPosition.quantity, lastPrice, currentPosition.target_quantity);
-                this.analyzeData(history);
+                this.analyzeData(history, adequateTimeframe);
             }
         }
     }
@@ -341,7 +354,7 @@ class PortfolioWidget extends LitElement {
             let nextPositionIndex = positionIndex + 1;
             if (nextPositionIndex >= this.positions.length) {
                 nextPositionIndex = 0;
-                await this.toggleTimeframe();
+                // await this.toggleTimeframe();
             }
             this.selectedPosition = this.positions[nextPositionIndex];
             // this.selectedPositionId = nextPosition.position_id;
