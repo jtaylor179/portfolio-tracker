@@ -6,6 +6,7 @@ import { MACDAnalysis, macd26129Config } from './macd-analysis-module.js';
 import { EMACrossoverAnalysis, ema26129Config } from './ema-analysis-module.js';
 
 import OpenAI from 'https://cdn.jsdelivr.net/npm/openai@4.26.0/+esm'
+import handsontable from 'https://esm.run/handsontable';
 
 
 // const sma = new SMA(3);
@@ -109,7 +110,13 @@ class PortfolioWidget extends LitElement {
                 // if secondary signal is sell, then set initial signal to pending buy
                 if(secondarySignal === 'Sell') {
                     this.initialSignal = secondarySignal;
-                    this.buyOrSell = 'Pending Buy';
+                    // if current position has no shares then set buyOrSell to 'Pending Buy' otherwise set to 'Pending Sell'
+                    if(this.selectedPosition.quantity === 0) {
+                        this.buyOrSell = 'Pending Buy';
+                    } else {
+                        this.buyOrSell = 'Pending Sell';
+                    }
+            
                     priority = 2;
                 } 
             } else {
@@ -201,13 +208,10 @@ class PortfolioWidget extends LitElement {
                 this.currentSymbolData = { currentSymbol: currentPosition.symbol, data: history};
             } else {
                 // print out beginning timestamps for t and ending t 
-                console.log('from:', new Date(t[0] * 1000).toISOString());
-                console.log('to:', new Date(t[t.length - 1] * 1000).toISOString());
+                // console.log('from:', new Date(t[0] * 1000).toISOString());
+                // console.log('to:', new Date(t[t.length - 1] * 1000).toISOString());
 
-                // print out beginning timestamps for t and ending t from currentSymbolData
-                console.log('from:', new Date(this.currentSymbolData.data.t[0] * 1000).toISOString());
-                console.log('to:', new Date(this.currentSymbolData.data.t[this.currentSymbolData.data.t.length - 1] * 1000).toISOString());
-
+            
                 // Otherwise append data if beginning timestamp is greater than current data's last timestamp
                 if(t[0] > this.currentSymbolData.data.t[this.currentSymbolData.data.t.length - 1]) {
                     this.currentSymbolData.data = { t: [...this.currentSymbolData.data.t, ...t], c: [...this.currentSymbolData.data.c, ...c] };
@@ -216,12 +220,16 @@ class PortfolioWidget extends LitElement {
                 else if(t[0] < this.currentSymbolData.data.t[0]) { 
                     this.currentSymbolData.data = { t: [...t, ...this.currentSymbolData.data.t], c: [...c, ...this.currentSymbolData.data.c] };
                 }
+                // // print out beginning timestamps for t and ending t from currentSymbolData
+                // console.log('from:', new Date(this.currentSymbolData.data.t[0] * 1000).toISOString());
+                // console.log('to:', new Date(this.currentSymbolData.data.t[this.currentSymbolData.data.t.length - 1] * 1000).toISOString());
+
             }
 
             //  print out beginning timestamps for t and ending t from currentSymbolData
             console.log('from:', new Date(this.currentSymbolData.data.t[0] * 1000).toISOString());
             console.log('to:', new Date(this.currentSymbolData.data.t[this.currentSymbolData.data.t.length - 1] * 1000).toISOString());
-        
+            console.log('price:', this.currentSymbolData.data.c[this.currentSymbolData.data.c.length - 1]);
             // await this.portfolioManager.addSecurityPriceHistory(currentPosition.security_id, resolution, history);
             // this.portfolioManager.addStockPriceHistory(securityId, history);
                         
@@ -229,17 +237,22 @@ class PortfolioWidget extends LitElement {
             // analyze data if final timestamp is no more than 4 days old
             history = this.currentSymbolData.data;
             const timeSeries = history.t;
+            const priceSeries = history.c;
             const finalTimestamp = timeSeries[timeSeries.length - 1];
             const currentTime = Math.floor(Date.now() / 1000);
             const diff = currentTime - finalTimestamp;
             // only send notifications if more than 5 months of data
             const adequateTimeframe = currentTime - timeSeries[0] > 15552000;
-            if(diff < 345600) {
+            console.log('adequateTimeframe:', adequateTimeframe);
+            if(adequateTimeframe) {
                 // get last price
-                const lastPrice = c[c.length - 1];
-                currentPosition.current_price = lastPrice;
-                await this.portfolioManager.updatePosition(currentPosition.position_id, currentPosition.quantity, lastPrice, currentPosition.target_quantity);
+                const priceSeries = history.c;
+                const lastPrice = priceSeries[priceSeries.length - 1];
+                // show last price with two decimal places
+                currentPosition.current_price = lastPrice.toFixed(2);
+                // await this.portfolioManager.updatePosition(currentPosition.position_id, currentPosition.quantity, lastPrice, currentPosition.target_quantity);
                 this.analyzeData(history, adequateTimeframe);
+                this.selectedPosition = {...currentPosition};
             }
         }
     }
@@ -255,7 +268,7 @@ class PortfolioWidget extends LitElement {
         super();
         
         this.selectedPortfolioId = '';
-        this.selectedPosition = null;
+        this.selectedPosition = {};
         this.portfolios = [];
         this.positions = [];
         this.ownerId = '59b880ab-0f59-4d7d-a8f7-515c82f2d8f9';
@@ -378,6 +391,28 @@ class PortfolioWidget extends LitElement {
         this.setSymbol(this.selectedPosition.symbol);
     }
 
+    async buyShares() {
+        const currentPosition = this.selectedPosition;
+        const targetValue = prompt('Enter amount to buy:', 2500);
+        // caculate target quantity = target amount / current price
+        const targetQuantity =  Math.floor(targetValue / currentPosition.current_price);
+        // update position with new target quantity
+        await this.portfolioManager.updatePosition(currentPosition.position_id, targetQuantity, currentPosition.current_price, targetQuantity);
+        // update selected position with new target quantity
+        this.selectedPosition = {...currentPosition, quantity: targetQuantity, target_quantity: targetQuantity};
+    }
+
+    async sellShares() {
+        const currentPosition = this.selectedPosition;
+        const targetValue = 0;  // sell all shares
+        const quantity =  0;
+        const targetQuantity = Math.floor(currentPosition.target_amount / currentPosition.current_price);
+        // update position with new target quantity
+        await this.portfolioManager.updatePosition(currentPosition.position_id, quantity, currentPosition.current_price, targetQuantity);
+        // update selected position with new target quantity
+        this.selectedPosition = {...currentPosition, quantity: quantity , target_quantity: targetQuantity};
+    }
+
     async updatePositions(currPositionId = null, curSymbol = null) {
         let symbol = curSymbol;
         let positionId = currPositionId;
@@ -386,7 +421,7 @@ class PortfolioWidget extends LitElement {
             positionId = this.positions[0].position_id;
             symbol = this.positions[0].symbol;
         }
-        this.selectedPosition = this.positions.find(p => p.position_id === positionId);
+        this.selectedPosition = this.positions.find(p => p.position_id === positionId) || {};
 
         //this.selectedPositionId = positionId;
         await this.setSymbol(symbol);
@@ -578,7 +613,7 @@ class PortfolioWidget extends LitElement {
 
 
         // add position async addPosition(portfolioId, securityId, initialQuantity, purchasePrice, targetQuantity = 0) 
-        const newPositionId = await this.portfolioManager.addPosition(this.selectedPortfolioId, securityId, currentShares, currentPrice, targetQuantity);
+        const newPositionId = await this.portfolioManager.addPosition(this.selectedPortfolioId, securityId, currentShares, currentPrice, targetQuantity, targetAmount);
         await this.updatePositions(newPositionId, symbol);
         // this.selectedPositionId = newPositionId;
         // // set symbol
@@ -630,9 +665,6 @@ class PortfolioWidget extends LitElement {
                 ${this.selectedPosition ? html`
                     <div style="width:150px;">
                         <span>Shares: ${this.selectedPosition.quantity}/${this.selectedPosition.target_quantity}</span>
-                        ${this.selectedPosition.weekly_flag === 1 ? html`<span style="color:blue;font-weight:bold;">W</span>` : ''}
-                        ${this.selectedPosition.daily_flag === 1 ? html`<span style="color:blue;font-weight:bold;">D</span>` : ''}
-                        ${this.selectedPosition.four_hour_flag === 1 ? html`<span style="color:blue;font-weight:bold;">4H</span>` : ''}
                         <span></span>
                     </div>
                 ` : ''}
@@ -643,9 +675,12 @@ class PortfolioWidget extends LitElement {
                     <button @click="${this.handleNextClick}">>></button>
                 </div>
             </div>
-            <div style="position:absolute;left:950px;top:53px;">
+            <div style="position:absolute;left:950px;top:45px;">
               <!-- If buy then color green, if sell then color red -->
-              <span style="font-size:20px;font-weight:bold;color:${this.buyOrSell === 'Buy' ? 'green' : 'red'}">${this.buyOrSell}</span>
+              <span style="font-size:20px;font-weight:bold;color:${this.buyOrSell === 'Buy' ? 'green' : 'red'}">${this.buyOrSell}: ${this.selectedPosition.current_price}</span>
+              <span>Shares: ${this.selectedPosition.quantity}/${this.selectedPosition.target_quantity}</span>
+              <span style="margin-left:20px;">Value: ${(this.selectedPosition.quantity * (this.selectedPosition.current_price || 0)).toFixed(0)}/ ${(this.selectedPosition.target_quantity * (this.selectedPosition.current_price || 0)).toFixed(0)}</span>
+              <span style="margin-left:20px;"><button  @click="${this.buyShares}">Buy</button><button  @click="${this.sellShares}">Sell</button></span>
             </div>
             
         `;

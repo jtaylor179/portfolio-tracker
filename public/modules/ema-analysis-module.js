@@ -20,8 +20,8 @@ export class EMACrossoverAnalysis {
     // No need to truncate closingPrices, but adjust the loop to ensure the last candle is always processed
 
     // write out the first and last dates in timestamps
-    console.log('from:', new Date(timestamps[0] * 1000).toISOString());
-    console.log('to:', new Date(timestamps[timestamps.length - 1] * 1000).toISOString());
+    // console.log('from:', new Date(timestamps[0] * 1000).toISOString());
+    // console.log('to:', new Date(timestamps[timestamps.length - 1] * 1000).toISOString());
   
     closingPrices.forEach((price, index) => {
       // Adjusted condition to ensure the last candle is processed regardless of the interval

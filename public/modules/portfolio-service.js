@@ -27,13 +27,13 @@ export class PortfolioManagerService {
         return data;
     }
 
-    async addSecurity(_secondary_id, _symbol, _security_name, _security_type = 'stock') {
+    async addSecurity(_secondary_id, _symbol, _security_name, _security_type = 'stock', _current_price = 0.00) {
         const { data: security_id, error } = await this.supabase
             .rpc('add_security', {
                 _secondary_id: _secondary_id,
                 _symbol: _symbol,
                 _security_name: _security_name,
-                _current_price: 0.00,
+                _current_price: _current_price,
                 _security_type: _security_type
             });
 
@@ -184,27 +184,29 @@ END;
 $function$;
 */
 
-    async addPosition(portfolioId, securityId, initialQuantity, purchasePrice, targetQuantity = 0) {
+    async addPosition(portfolioId, securityId, initialQuantity, purchasePrice, targetQuantity = 0, targetAmount = 0) {
         const { data, error } = await this.supabase
             .rpc('add_position', {
                 p_portfolio_id: portfolioId,
                 p_security_id: securityId,
                 p_initial_quantity: initialQuantity,
                 p_purchase_price: purchasePrice,
-                p_target_quantity: targetQuantity
+                p_target_quantity: targetQuantity,
+                p_target_amount: targetAmount
             });
 
         if (error) throw error;
         return data;
     }
 
-    async updatePosition(positionId, newQuantity, newPurchasePrice, newTargetQuantity) {
+    async updatePosition(positionId, newQuantity, newPurchasePrice, newTargetQuantity, newTargetAmount) {
         const { data, error } = await this.supabase
             .rpc('update_position', {
                 p_position_id: positionId,
                 p_new_quantity: newQuantity,
                 p_new_purchase_price: newPurchasePrice,
-                p_new_target_quantity: newTargetQuantity
+                p_new_target_quantity: newTargetQuantity,
+                p_new_target_amount: newTargetAmount
             });
 
         if (error) throw error;
