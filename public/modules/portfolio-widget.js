@@ -8,6 +8,11 @@ import { EMACrossoverAnalysis, ema26129Config } from './ema-analysis-module.js';
 import OpenAI from 'https://cdn.jsdelivr.net/npm/openai@4.26.0/+esm'
 import handsontable from 'https://esm.run/handsontable';
 
+let link = document.createElement('link');
+link.rel = 'stylesheet';
+link.href = 'https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css';
+document.head.appendChild(link);
+
 
 // const sma = new SMA(3);
 
@@ -42,7 +47,7 @@ async function main() {
   console.log(completion.choices[0]);
 }
 
-// main();
+main();
 
 
 class PortfolioWidget extends LitElement {
@@ -194,9 +199,9 @@ class PortfolioWidget extends LitElement {
     async saveStockData(secondaryId, resolution, from, to, responseJson) {
         const currentPosition = this.selectedPosition;
         if(this.selectedPosition) {
-            if(this.selectedPosition.secondary_id !== secondaryId) {
-                await this.portfolioManager.addSecurity(secondaryId, currentPosition.symbol, currentPosition.symbol, 'stock');
-            }
+            // if(this.selectedPosition.secondary_id !== secondaryId) {
+            //     await this.portfolioManager.addSecurity(secondaryId, currentPosition.symbol, currentPosition.symbol, 'stock');
+            // }
 
             // Destructure properties a and b
             const { t, c } = responseJson
@@ -204,7 +209,7 @@ class PortfolioWidget extends LitElement {
             let history = { t, c };
 
             // Reset data if symbol changes
-            if(this.currentSymbolData.currentSymbol !== currentPosition.symbol) {
+            if(!this.currentSymbolData || this.currentSymbolData.currentSymbol !== currentPosition.symbol) {
                 this.currentSymbolData = { currentSymbol: currentPosition.symbol, data: history};
             } else {
                 // print out beginning timestamps for t and ending t 
@@ -226,33 +231,42 @@ class PortfolioWidget extends LitElement {
 
             }
 
-            //  print out beginning timestamps for t and ending t from currentSymbolData
-            console.log('from:', new Date(this.currentSymbolData.data.t[0] * 1000).toISOString());
-            console.log('to:', new Date(this.currentSymbolData.data.t[this.currentSymbolData.data.t.length - 1] * 1000).toISOString());
-            console.log('price:', this.currentSymbolData.data.c[this.currentSymbolData.data.c.length - 1]);
-            // await this.portfolioManager.addSecurityPriceHistory(currentPosition.security_id, resolution, history);
-            // this.portfolioManager.addStockPriceHistory(securityId, history);
-                        
-            console.log('saved symbol: ' + this.currentSymbol + ' data: ', 'itemcount:'  + t.length, resolution)
-            // analyze data if final timestamp is no more than 4 days old
             history = this.currentSymbolData.data;
             const timeSeries = history.t;
             const priceSeries = history.c;
             const finalTimestamp = timeSeries[timeSeries.length - 1];
             const currentTime = Math.floor(Date.now() / 1000);
             const diff = currentTime - finalTimestamp;
-            // only send notifications if more than 5 months of data
-            const adequateTimeframe = currentTime - timeSeries[0] > 15552000;
-            console.log('adequateTimeframe:', adequateTimeframe);
-            if(adequateTimeframe) {
-                // get last price
-                const priceSeries = history.c;
-                const lastPrice = priceSeries[priceSeries.length - 1];
-                // show last price with two decimal places
-                currentPosition.current_price = lastPrice.toFixed(2);
-                // await this.portfolioManager.updatePosition(currentPosition.position_id, currentPosition.quantity, lastPrice, currentPosition.target_quantity);
-                this.analyzeData(history, adequateTimeframe);
-                this.selectedPosition = {...currentPosition};
+
+            //  print out beginning timestamps for t and ending t from currentSymbolData
+            console.log('from:', new Date(timeSeries[0] * 1000).toISOString());
+            console.log('to:', new Date(timeSeries[timeSeries.length - 1] * 1000).toISOString());
+            console.log('price:', priceSeries[priceSeries.length - 1]);
+            // await this.portfolioManager.addSecurityPriceHistory(currentPosition.security_id, resolution, history);
+            // this.portfolioManager.addStockPriceHistory(securityId, history);
+                        
+            console.log('saved symbol: ' + this.currentSymbol + ' data: ', 'itemcount:'  + t.length, resolution)
+            // analyze data if final timestamp is no more than 4 days old
+
+            // only proceed if recent data is available
+            if(diff < 345600) {  // in days - 4 days
+
+                // only send notifications if more than 5 months of data
+                const adequateTimeframe = currentTime - timeSeries[0] > 15552000;
+                console.log('adequateTimeframe:', adequateTimeframe);
+                if(adequateTimeframe) {
+                    // get last price
+                    const priceSeries = history.c;
+                    const lastPrice = priceSeries[priceSeries.length - 1];
+                    // show last price with two decimal places
+                    currentPosition.current_price = lastPrice.toFixed(2);
+                    // await this.portfolioManager.updatePosition(currentPosition.position_id, currentPosition.quantity, lastPrice, currentPosition.target_quantity);
+                    this.analyzeData(history, adequateTimeframe);
+                    this.selectedPosition = {...currentPosition};
+                }
+                if(this.selectedPosition.secondary_id !== secondaryId) {
+                    await this.portfolioManager.addSecurity(secondaryId, currentPosition.symbol, currentPosition.symbol, 'stock', currentPosition.current_price);
+                }
             }
         }
     }
@@ -590,19 +604,21 @@ class PortfolioWidget extends LitElement {
             return;
         }
 
-        // prompt for current price
-        const currentPrice = prompt('Enter current price:', default_currentPrice);
-        if (!currentPrice) {
-            alert('must enter current price');
-            return;
-        }
+        // // prompt for current price
+        // const currentPrice = prompt('Enter current price:', default_currentPrice);
+        // if (!currentPrice) {
+        //     alert('must enter current price');
+        //     return;
+        // }
 
-        //  prompt for current owned shared
-        const currentShares = prompt('Enter current shares:', default_currentShares);
-        if (!currentShares) {
-            alert('must enter current shares');
-            return;
-        }    
+        const current_price = this.selectedPosition.current_price;
+
+        // //  prompt for current owned shared
+        // const currentShares = prompt('Enter current shares:', default_currentShares);
+        // if (!currentShares) {
+        //     alert('must enter current shares');
+        //     return;
+        // }    
 
         // calculate target quantity - use floor to round down to nearest whole number
         const targetQuantity = Math.floor(targetAmount / currentPrice);
