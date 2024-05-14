@@ -1,17 +1,39 @@
-import { LitElement, html } from 'https://cdn.jsdelivr.net/gh/lit/dist@2/core/lit-core.min.js';
+import { LitElement,css, unsafeCSS, html } from 'https://cdn.jsdelivr.net/gh/lit/dist@2/core/lit-core.min.js';
 import { XHREventDispatcher } from './xhr-intercept.js';
 import { PortfolioManagerService } from './portfolio-service.js';
 // import {Big, SMA}  from 'https://esm.run/trading-signals';
 import { MACDAnalysis, macd26129Config } from './macd-analysis-module.js';
 import { EMACrossoverAnalysis, ema26129Config } from './ema-analysis-module.js';
 
-import OpenAI from 'https://cdn.jsdelivr.net/npm/openai@4.26.0/+esm'
-import handsontable from 'https://esm.run/handsontable';
+import OpenAI from 'https://cdn.jsdelivr.net/npm/openai@4.26.0/+esm';
+import Handsontable from 'https://esm.run/handsontable';
+import papaparse from 'https://cdn.jsdelivr.net/npm/papaparse@5.4.1/+esm';
 
-let link = document.createElement('link');
-link.rel = 'stylesheet';
-link.href = 'https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css';
-document.head.appendChild(link);
+
+// const externalStylesheet = 'https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css';
+
+// const link = document.createElement('link');
+// link.rel = 'stylesheet';
+// link.href = 'https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css';
+
+function synchronousRequest(url) {
+    var xhr = new window.originalXMLHttpRequest(); // Create a new XMLHttpRequest object
+    xhr.open('GET', url, false); // Initialize the request, setting async to false for synchronous
+    xhr.send(null); // Send the request
+
+    if (xhr.status === 200) { // Check if the request was successful
+        return xhr.responseText; // Return the response text if successful
+    } else {
+        console.error('Request failed with status:', xhr.status);
+        return null; // Return null if the request failed
+    }
+}
+
+
+
+// document.head.appendChild(link);
+
+const externalStylesheet = synchronousRequest('https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css');
 
 
 // const sma = new SMA(3);
@@ -47,7 +69,7 @@ async function main() {
   console.log(completion.choices[0]);
 }
 
-main();
+// main();
 
 
 class PortfolioWidget extends LitElement {
@@ -60,8 +82,49 @@ class PortfolioWidget extends LitElement {
             positions: { type: Array },
             ownerId: { type: String },
             buyOrSell: { type: String },
+            dialogOpened: { type: Boolean }
         };
     }
+    static styles = css`
+        ${unsafeCSS(externalStylesheet)}
+        /* other styles */
+        dialog {
+            border: none;
+            padding: 0px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            position: relative;
+            width: 800px;
+          }
+    
+          .draggable-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f1f1f1;
+            cursor: move;
+            padding: 0.5em;
+          }
+    
+          h12 {
+            margin: 0;
+            font-size: 1.25em;
+          }
+    
+          .resizer {
+            width: 10px;
+            height: 10px;
+            background: #ccc;
+            position: absolute;
+            right: 0;
+            bottom: 0;
+            cursor: se-resize;
+          }
+    
+          button2 {
+            margin-top: 1em;
+          }
+    `;
+
 
     interceptAndLogSpecificRequests() {
         XMLHttpRequest.configureOverrides([
@@ -84,7 +147,11 @@ class PortfolioWidget extends LitElement {
         const responseText = response.responseText;
         const responseJson = JSON.parse(responseText);
         const timeframe = this.currentTimeframe;
-    
+
+        if(!this.positions.find(ref => ref.secondary_id == secondaryId)){
+            console.log('Request detected for symbol:', secondaryId);
+            this.current_price = responseJson.c[responseJson.c.length - 1];
+        }
         if(secondaryId && resolution && from && to) {
             console.log(`Request detected for symbol ${secondaryId} with resolution ${resolution}, timefream ${timeframe} from ${from} to ${to}`);
             this.saveStockData(parseInt(secondaryId), resolution, from, to, responseJson);
@@ -273,14 +340,47 @@ class PortfolioWidget extends LitElement {
     
     firstUpdated() {
         // add span with content 'hi' to div with class 'pane-legend-line pane-legend-wrap main'
+        const container = this.shadowRoot.querySelector('#thegrid');
+    
+        this.portfolioGrid = new Handsontable(container, {
+            data: [
+                ['AAPL', 'Apple Computer', 180, 180, 1, '{}']
+            ],
+            colHeaders: ['Symbol', 'Name', 'Price', 'Value', 'Qty', 'Stats'],
+            rowHeaders: true,
+            height: 300,
+            autoWrapRow: true,
+            autoWrapCol: true,
+            columns: [
+                { data: 0, type: 'text' }, // Symbol
+                { data: 1, type: 'text' }, // Name
+                { data: 2, type: 'numeric', numericFormat: { pattern: '$0,0.00' } }, // Price
+                { data: 3, type: 'numeric', numericFormat: { pattern: '$0,0.00' } }, // Value
+                { data: 4, type: 'numeric' }, // Qty
+                { data: 5, type: 'text' } // Stats, assuming JSON data or similar, customize as needed
+            ],
+            licenseKey: 'non-commercial-and-evaluation' // for non-commercial use only
+        });
 
+        this.openDialog();
+    }
+    
+
+    updatePortfolioGrid() {
+        const data = this.positions.map(p => {
+            //  if current_price not set then set top purchase_price
+            p.current_price = p.current_price || p.purchase_price;
+            return [p.symbol, p.security_name, p.current_price, p.current_price * p.quantity, p.quantity, JSON.stringify(
+                {}
+            )];
+        });
+        this.portfolioGrid.updateData(data);
     }
 
     constructor() {
 
-    
         super();
-        
+        this.portfolioGrid = null; // will contain reference to handsontable instance
         this.selectedPortfolioId = '';
         this.selectedPosition = {};
         this.portfolios = [];
@@ -289,10 +389,11 @@ class PortfolioWidget extends LitElement {
         this.portfolioManager = new PortfolioManagerService();
         this.currentSymbol = '';
         this.stockRotationTimeout = null;
-        this.currentSymbolData = {};
+        this.currentSymbolData = { data: { t: [], c: [] }, currentSymbol: ''};
         this.isCycling = false;
         this.currentTimeframe = '4h';
         this.availableTimeframes = [{timeframe: '4h', selector:'4 hour'},{ timeframe: '1D', selector: '1 day'}];
+        this.dialogOpened = false;
   
         // Subscribe to the custom log event
         // XHREventDispatcher.addEventListener('xhrLogEvent', function(logDetail) {
@@ -344,6 +445,7 @@ class PortfolioWidget extends LitElement {
 
         }
     }
+
 
     async pauseRotation() {
         clearInterval(this.stockRotationTimeout);
@@ -428,6 +530,20 @@ class PortfolioWidget extends LitElement {
     }
 
     async updatePositions(currPositionId = null, curSymbol = null) {
+        /* example position object
+            {
+            "position_id": "b5ec6c73-6762-422b-b05c-b20f1bdce21f",
+            "security_id": "d023dd77-e484-41d7-87da-abb02c0a2c9d",
+            "quantity": 60,
+            "target_quantity": 60,
+            "target_amount": 2500.00,
+            "purchase_price": 20.68,
+            "calculated_market_value": 0.00,
+            "symbol": "CORN",
+            "security_name": "CORN",
+            "secondary_id": 44788
+        }
+        */
         let symbol = curSymbol;
         let positionId = currPositionId;
         this.positions = await this.portfolioManager.getPositionsByPortfolio(this.selectedPortfolioId);
@@ -437,8 +553,11 @@ class PortfolioWidget extends LitElement {
         }
         this.selectedPosition = this.positions.find(p => p.position_id === positionId) || {};
 
+        this.updatePortfolioGrid();
+
         //this.selectedPositionId = positionId;
         await this.setSymbol(symbol);
+  
     }
 
     isCurrentDomainInvesting() {
@@ -575,7 +694,7 @@ class PortfolioWidget extends LitElement {
         let default_secondaryId = '';
         let default_targetAmount = 2500.00;
         let default_currentShares = 0;
-        let default_currentPrice = 0;
+        let current_price = this.current_price
 
         // see if an existing position already exists
         const existingPosition = this.positions.find(p => p.symbol === symbol);
@@ -583,7 +702,6 @@ class PortfolioWidget extends LitElement {
             default_secondaryId = existingPosition.secondary_id;
             default_targetAmount = Math.floor(existingPosition.target_quantity * existingPosition.purchase_price);
             default_currentShares = existingPosition.quantity;
-            default_currentPrice = existingPosition.current_price;
         }
 
         // p_portfolio_id uuid, 
@@ -604,6 +722,11 @@ class PortfolioWidget extends LitElement {
             return;
         }
 
+        let currentAmount = prompt('Enter Current Amount$:', default_targetAmount);
+        if (!currentAmount) {
+            currentAmount = 0;
+        }
+
         // // prompt for current price
         // const currentPrice = prompt('Enter current price:', default_currentPrice);
         // if (!currentPrice) {
@@ -611,7 +734,7 @@ class PortfolioWidget extends LitElement {
         //     return;
         // }
 
-        const current_price = this.selectedPosition.current_price;
+  
 
         // //  prompt for current owned shared
         // const currentShares = prompt('Enter current shares:', default_currentShares);
@@ -621,7 +744,9 @@ class PortfolioWidget extends LitElement {
         // }    
 
         // calculate target quantity - use floor to round down to nearest whole number
-        const targetQuantity = Math.floor(targetAmount / currentPrice);
+        const targetQuantity = Math.floor(targetAmount / current_price);
+
+        const currentQuantity = Math.floor(currentAmount / current_price);
 
         // 
 
@@ -629,13 +754,44 @@ class PortfolioWidget extends LitElement {
 
 
         // add position async addPosition(portfolioId, securityId, initialQuantity, purchasePrice, targetQuantity = 0) 
-        const newPositionId = await this.portfolioManager.addPosition(this.selectedPortfolioId, securityId, currentShares, currentPrice, targetQuantity, targetAmount);
+        const newPositionId = await this.portfolioManager.addPosition(this.selectedPortfolioId, securityId, currentQuantity, current_price, targetQuantity, targetAmount);
         await this.updatePositions(newPositionId, symbol);
         // this.selectedPositionId = newPositionId;
         // // set symbol
         // await this.setSymbol(symbol);
     }
 
+    openDialog() {
+        const dialog = this.shadowRoot.querySelector('dialog');
+        dialog.showModal();
+        this.dialogOpened = true;
+    }
+
+    closeDialog() {
+        const dialog = this.shadowRoot.querySelector('dialog');
+        dialog.close();
+        this.dialogOpened = false;
+    }
+
+    renderDialog() {
+        return html`
+            <dialog>
+            <div class="draggable-header">
+                <h2>Current Portfolio</h2>
+                <button @click="${this.closeDialog}">Close</button>
+            </div>
+            <div>    
+                <div id="thegrid" style=" width:100%;height:400px;"></div>
+            </div>
+            <div class="resizer"></div>
+            </dialog>
+
+            <button @click="${this.openDialog}">
+            Show dialog
+            </button>
+        `;
+    }
+    
 
     renderPortfolioSelect() {
         return html`
@@ -674,9 +830,11 @@ class PortfolioWidget extends LitElement {
            <div style="display: flex;position:absolute;left:750px;top:10px;">
                 ${this.renderPortfolioSelect()}
                 ${this.renderPositionSelect()}
-                <div style="width:30px;">
+                <div style="width:60px; white-space: nowrap;">
                 <!-- button to add a new position to current portfolio -->
                     <button @click="${this.addPosition}">+</button>
+                    <!-- button to show portfolio dialog -->
+                    <button @click="${this.openDialog}">P</button>
                 </div>
                 ${this.selectedPosition ? html`
                     <div style="width:150px;">
@@ -698,6 +856,10 @@ class PortfolioWidget extends LitElement {
               <span style="margin-left:20px;">Value: ${(this.selectedPosition.quantity * (this.selectedPosition.current_price || 0)).toFixed(0)}/ ${(this.selectedPosition.target_quantity * (this.selectedPosition.current_price || 0)).toFixed(0)}</span>
               <span style="margin-left:20px;"><button  @click="${this.buyShares}">Buy</button><button  @click="${this.sellShares}">Sell</button></span>
             </div>
+
+
+
+            ${this.renderDialog()}
             
         `;
     }

@@ -24,6 +24,8 @@ const xhrEventDispatcher = new XHREventDispatcher();
 
 const originalXMLHttpRequest = window.XMLHttpRequest;
 
+window.originalXMLHttpRequest = originalXMLHttpRequest;
+
 window.XMLHttpRequest = class {
     constructor() {
         const xhr = new originalXMLHttpRequest();
