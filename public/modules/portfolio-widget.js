@@ -1,13 +1,13 @@
 import { LitElement,css, unsafeCSS, html } from 'https://cdn.jsdelivr.net/gh/lit/dist@2/core/lit-core.min.js';
 import { XHREventDispatcher } from './xhr-intercept.js';
 import { PortfolioManagerService } from './portfolio-service.js';
-// import {Big, SMA}  from 'https://esm.run/trading-signals';
 import { MACDAnalysis, macd26129Config } from './macd-analysis-module.js';
 import { EMACrossoverAnalysis, ema26129Config } from './ema-analysis-module.js';
 
 import OpenAI from 'https://cdn.jsdelivr.net/npm/openai@4.26.0/+esm';
 import Handsontable from 'https://esm.run/handsontable';
 import papaparse from 'https://cdn.jsdelivr.net/npm/papaparse@5.4.1/+esm';
+import { progressBarRenderer, starRenderer } from "./custom-renderers.js";
 
 
 // const externalStylesheet = 'https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css';
@@ -101,7 +101,7 @@ class PortfolioWidget extends LitElement {
             justify-content: space-between;
             align-items: center;
             background: #f1f1f1;
-            cursor: move;
+            // cursor: move;
             padding: 0.5em;
           }
     
@@ -119,7 +119,11 @@ class PortfolioWidget extends LitElement {
             bottom: 0;
             cursor: se-resize;
           }
-    
+          .footer {
+            padding:10px;
+            background: #f1f1f1;
+          }
+
           button2 {
             margin-top: 1em;
           }
@@ -160,20 +164,20 @@ class PortfolioWidget extends LitElement {
 
     analyzeData(data, adequateTimeframe = false) {
 
-        // const analysisResults = (new MACDAnalysis(ema26129Config)).analyze(data);
-
-        // console.log("Last Signal:", analysisResults.lastSignal);
-        // console.log("Signal History:", analysisResults.signalHistory);
+   
         let intervalType = this.currentTimeframe.toUpperCase();
         const intervalMapping = {'1D': 1, '4H': 4, '1H': 1, '2H': 2};
         const interval = intervalMapping[intervalType];
-        const analysisResults = (new EMACrossoverAnalysis(ema26129Config)).analyze(data, interval);
-        const initialSignal = analysisResults.lastSignal === null ? 'Buy' : analysisResults.lastSignal.type;
-        const history = analysisResults.signalHistory;
+        // const macdAnalysisResults = (new MACDAnalysis(ema26129Config)).analyze(data);
+        // console.log("Macd Last Signal:", macdAnalysisResults.lastSignal);
+        // console.log("Macd Signal History:", macdAnalysisResults.signalHistory);
+        const emaAnalysisResults = (new EMACrossoverAnalysis(ema26129Config)).analyze(data, interval);
+        const initialSignal = emaAnalysisResults.lastSignal === null ? 'Buy' : emaAnalysisResults.lastSignal.type;
+        const history = emaAnalysisResults.signalHistory;
         this.buyOrSell = initialSignal;
         let priority = 1;
-        console.log("Initial Last Signal:", analysisResults.lastSignal);
-        console.log("InitialSignal History:", history);
+        console.log("Initial EMA Last Signal:", emaAnalysisResults.lastSignal);
+        console.log("Initial EMA Signal History:", history);
         if(initialSignal === 'Buy') {
             const secondaryInterval = 1;
             if(secondaryInterval !== interval) {
@@ -346,7 +350,7 @@ class PortfolioWidget extends LitElement {
             data: [
                 ['AAPL', 'Apple Computer', 180, 180, 1, '{}']
             ],
-            colHeaders: ['Symbol', 'Name', 'Price', 'Value', 'Qty', 'Stats'],
+            colHeaders: ['Symbol', 'Name', 'Price', 'Value', 'Qty', 'Stats', 'Mute'],
             rowHeaders: true,
             height: 300,
             autoWrapRow: true,
@@ -357,7 +361,12 @@ class PortfolioWidget extends LitElement {
                 { data: 2, type: 'numeric', numericFormat: { pattern: '$0,0.00' } }, // Price
                 { data: 3, type: 'numeric', numericFormat: { pattern: '$0,0.00' } }, // Value
                 { data: 4, type: 'numeric' }, // Qty
-                { data: 5, type: 'text' } // Stats, assuming JSON data or similar, customize as needed
+                { data: 5, type: 'text' }, // Stats, assuming JSON data or similar, customize as needed
+                {
+                    data: 6,
+                    type: "checkbox",
+                    className: "htCenter"
+                  },
             ],
             licenseKey: 'non-commercial-and-evaluation' // for non-commercial use only
         });
@@ -432,6 +441,7 @@ class PortfolioWidget extends LitElement {
             await this.updatePositions();
         }
     }
+
 
     // cycle through positions in current portfolio - every 30 seconds
     async cyclePositions() {
@@ -544,9 +554,22 @@ class PortfolioWidget extends LitElement {
             "secondary_id": 44788
         }
         */
-        let symbol = curSymbol;
-        let positionId = currPositionId;
+        let symbol = curSymbol || this.selectedPosition.symbol;
+        let positionId = currPositionId || this.selectedPosition.position_id;
+        // store current prices for each symbol in a dictionary
+        const currentPrices = {};
+        // get current prices for all symbols
+        for (const position of this.positions) {
+            currentPrices[position.symbol] = position.current_price;
+        }
+
         this.positions = await this.portfolioManager.getPositionsByPortfolio(this.selectedPortfolioId);
+
+        // update current prices for each symbol
+        for (const position of this.positions) {
+            position.current_price = currentPrices[position.symbol] || 0;
+        }
+
         if (!positionId && this.positions.length > 0) {
             positionId = this.positions[0].position_id;
             symbol = this.positions[0].symbol;
@@ -694,7 +717,7 @@ class PortfolioWidget extends LitElement {
         let default_secondaryId = '';
         let default_targetAmount = 2500.00;
         let default_currentShares = 0;
-        let current_price = this.current_price
+        let current_price = 1;
 
         // see if an existing position already exists
         const existingPosition = this.positions.find(p => p.symbol === symbol);
@@ -702,6 +725,10 @@ class PortfolioWidget extends LitElement {
             default_secondaryId = existingPosition.secondary_id;
             default_targetAmount = Math.floor(existingPosition.target_quantity * existingPosition.purchase_price);
             default_currentShares = existingPosition.quantity;
+            current_price = existingPosition.current_price;
+        } else {
+            // prompt for current price
+            current_price = prompt('Enter current price:', 1);
         }
 
         // p_portfolio_id uuid, 
@@ -776,19 +803,16 @@ class PortfolioWidget extends LitElement {
     renderDialog() {
         return html`
             <dialog>
-            <div class="draggable-header">
-                <h2>Current Portfolio</h2>
-                <button @click="${this.closeDialog}">Close</button>
-            </div>
-            <div>    
-                <div id="thegrid" style=" width:100%;height:400px;"></div>
-            </div>
-            <div class="resizer"></div>
+                <div class="draggable-header">
+                    <div style="flex:1">Current Portfolio</div>
+                    <button style="width:60px;" @click="${this.updatePositions}">Refresh</button>
+                    <button style="width:60px;" @click="${this.closeDialog}">Close</button>
+                </div>
+                <div>    
+                    <div id="thegrid" style=" width:100%;height:400px;"></div>
+                </div>
+                <div class="footer"><button>Save</button></div>
             </dialog>
-
-            <button @click="${this.openDialog}">
-            Show dialog
-            </button>
         `;
     }
     

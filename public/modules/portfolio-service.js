@@ -162,26 +162,29 @@ END;
 $function$
 ;
 
-CREATE OR REPLACE FUNCTION public.add_position(
-    p_portfolio_id uuid,
-    p_security_id uuid,
-    p_initial_quantity int,
-    p_purchase_price numeric,
-    p_target_quantity int
-)   
-RETURNS uuid
-LANGUAGE plpgsql
+
+CREATE OR REPLACE FUNCTION public.add_position(p_portfolio_id uuid, p_security_id uuid, p_initial_quantity integer, p_purchase_price numeric, p_target_quantity integer, p_target_amount numeric DEFAULT 0.00)
+ RETURNS uuid
+ LANGUAGE plpgsql
 AS $function$
 DECLARE
     v_new_position_id uuid;
 BEGIN
-    INSERT INTO portfolio_manager.position (portfolio_id, security_id, quantity, purchase_price, target_quantity)
-    VALUES (p_portfolio_id, p_security_id, p_initial_quantity, p_purchase_price, p_target_quantity)
+    INSERT INTO portfolio_manager.position (portfolio_id, security_id, quantity, purchase_price, target_quantity, target_amount)
+    VALUES (p_portfolio_id, p_security_id, p_initial_quantity, p_purchase_price, p_target_quantity, p_target_amount)
+    ON CONFLICT (portfolio_id, security_id) DO UPDATE
+    SET quantity = EXCLUDED.quantity, 
+        purchase_price = EXCLUDED.purchase_price, 
+        target_quantity = EXCLUDED.target_quantity,
+        target_amount = EXCLUDED.target_amount
     RETURNING position_id INTO v_new_position_id;
+   
 
     RETURN v_new_position_id;
 END;
-$function$;
+$function$
+;
+
 */
 
     async addPosition(portfolioId, securityId, initialQuantity, purchasePrice, targetQuantity = 0, targetAmount = 0) {

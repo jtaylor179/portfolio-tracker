@@ -1,6 +1,7 @@
 // MACDAnalysisModule.js
-import { MACD, Big, EMA } from './trading-signals.js';
+// import { MACD, Big, EMA } from './trading-signals.js';
 
+import { MACD, Big, EMA } from 'https://esm.run/trading-signals';
 
 
 export class MACDAnalysis {

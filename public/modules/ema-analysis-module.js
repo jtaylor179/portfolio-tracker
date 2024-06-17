@@ -1,5 +1,5 @@
-import { FasterEMA, Big } from './trading-signals.js';
-
+// import { FasterEMA, Big } from './trading-signals.js';
+import { FasterEMA, Big } from 'https://esm.run/trading-signals';
 export class EMACrossoverAnalysis {
   constructor(config) {
     this.shortEMA = new FasterEMA(config.shortPeriod);
